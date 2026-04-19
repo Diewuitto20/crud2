@@ -1,0 +1,494 @@
+<?php
+session_start();
+
+$error_message = '';
+$success_message = '';
+$current_view = 'login';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'] ?? '';
+
+    if ($action === 'login') {
+        $email    = trim($_POST['email'] ?? '');
+        $password = $_POST['password'] ?? '';
+
+        if (empty($email) || empty($password)) {
+            $error_message = 'Por favor completa todos los campos.';
+            $current_view  = 'login';
+        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $error_message = 'El correo electrónico no es válido.';
+            $current_view  = 'login';
+        } else {
+           
+            header('Location: dashboard.php');
+            exit;
+        }
+
+    } elseif ($action === 'register') {
+        $nombre   = trim($_POST['nombre'] ?? '');
+        $ap_pat   = trim($_POST['ap_paterno'] ?? '');
+        $ap_mat   = trim($_POST['ap_materno'] ?? '');
+        $email    = trim($_POST['email'] ?? '');
+        $password = $_POST['password'] ?? '';
+
+        if (empty($nombre) || empty($ap_pat) || empty($email) || empty($password)) {
+            $error_message = 'Por favor completa todos los campos obligatorios.';
+            $current_view  = 'register';
+        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $error_message = 'El correo electrónico no es válido.';
+            $current_view  = 'register';
+        } elseif (strlen($password) < 8) {
+            $error_message = 'La contraseña debe tener al menos 8 caracteres.';
+            $current_view  = 'register';
+        } else {
+            
+            $success_message = '¡Cuenta creada exitosamente! Ya puedes iniciar sesión.';
+            $current_view    = 'login';
+        }
+
+    } elseif ($action === 'recover') {
+        $email   = trim($_POST['email'] ?? '');
+        $captcha = isset($_POST['captcha']);
+
+        if (empty($email)) {
+            $error_message = 'Por favor ingresa tu correo electrónico.';
+            $current_view  = 'recover';
+        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $error_message = 'El correo electrónico no es válido.';
+            $current_view  = 'recover';
+        } elseif (!$captcha) {
+            $error_message = 'Por favor confirma que no eres un robot.';
+            $current_view  = 'recover';
+        } else {
+           
+            $success_message = 'Si el correo existe, recibirás las instrucciones en breve.';
+            $current_view    = 'login';
+        }
+    }
+}
+function old(string $key, string $default = ''): string {
+    return htmlspecialchars($_POST[$key] ?? $default, ENT_QUOTES, 'UTF-8');
+}
+?>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Autenticación – Recicladora Diaz</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+       
+        :root {
+            --bg-page:    #f4f6f8;
+            --bg-box:     #e8eaed;
+            --white:      #ffffff;
+            --text-dark:  #2d2d2d;
+            --text-gray:  #6b7280;
+            --green-dark: #1a5632;
+            --green-mid:  #2e7d52;
+            --btn-blue:   #93c5fd;
+            --btn-blue-h: #60a5fa;
+            --red:        #dc2626;
+            --green-ok:   #16a34a;
+            --radius-pill: 30px;
+            --radius-box:  20px;
+            --shadow-sm:   0 2px 8px rgba(0,0,0,.08);
+            --shadow-md:   0 6px 20px rgba(0,0,0,.12);
+            --transition:  .2s ease;
+        }
+
+        *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: var(--bg-page);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .auth-card {
+            background: var(--bg-box);
+            width: min(820px, 95vw);
+            border-radius: var(--radius-box);
+            display: flex;
+            overflow: hidden;
+            box-shadow: var(--shadow-md);
+        }
+
+        .auth-left {
+            flex: 0 0 280px;
+            background: linear-gradient(160deg, #1a5632 0%, #2e7d52 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 24px;
+            gap: 20px;
+            transition: all .3s ease;
+        }
+
+        .logo-box {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: rgba(255,255,255,.15);
+            border: 3px solid rgba(255,255,255,.4);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 700;
+            color: #fff;
+            text-align: center;
+            letter-spacing: .5px;
+            line-height: 1.4;
+        }
+
+        .logo-box i { font-size: 32px; margin-bottom: 6px; }
+
+        .auth-subtitle {
+            color: rgba(255,255,255,.85);
+            font-size: 15px;
+            font-weight: 400;
+            letter-spacing: .3px;
+        }
+
+        .auth-right {
+            flex: 1;
+            padding: 44px 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            background: var(--white);
+        }
+
+        .view { display: none; flex-direction: column; align-items: center; gap: 0; }
+        .view.active { display: flex; }
+
+        .view-title {
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .alert {
+            width: 100%;
+            max-width: 340px;
+            padding: 10px 16px;
+            border-radius: 10px;
+            font-size: 13.5px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .alert-error   { background: #fef2f2; color: var(--red);      border: 1px solid #fca5a5; }
+        .alert-success { background: #f0fdf4; color: var(--green-ok); border: 1px solid #86efac; }
+
+        .input-wrap {
+            display: flex;
+            align-items: center;
+            background: #f9fafb;
+            border: 1.5px solid #e5e7eb;
+            border-radius: var(--radius-pill);
+            padding: 10px 18px;
+            width: 100%;
+            max-width: 340px;
+            margin-bottom: 14px;
+            transition: border-color var(--transition), box-shadow var(--transition);
+        }
+        .input-wrap:focus-within {
+            border-color: var(--green-mid);
+            box-shadow: 0 0 0 3px rgba(46,125,82,.12);
+            background: var(--white);
+        }
+        .input-wrap i {
+            color: var(--text-gray);
+            font-size: 16px;
+            margin-right: 12px;
+            width: 20px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .input-wrap input {
+            border: none;
+            outline: none;
+            font-size: 14.5px;
+            width: 100%;
+            background: transparent;
+            color: var(--text-dark);
+        }
+        .input-wrap input::placeholder { color: #9ca3af; }
+
+        /* ======= LINKS ======= */
+        .link-small {
+            font-size: 13px;
+            color: var(--green-mid);
+            text-decoration: none;
+            margin-bottom: 20px;
+            display: block;
+            text-align: center;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+        .link-small:hover { text-decoration: underline; }
+
+        /* ======= BOTONES ======= */
+        .btn-group { display: flex; gap: 12px; justify-content: center; width: 100%; margin-top: 6px; }
+
+        .btn {
+            flex: 1;
+            max-width: 150px;
+            padding: 11px 20px;
+            border-radius: var(--radius-pill);
+            font-size: 14.5px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+            box-shadow: var(--shadow-sm);
+            letter-spacing: .2px;
+        }
+        .btn:active { transform: scale(.97); }
+
+        .btn-primary {
+            background: var(--green-dark);
+            color: #fff;
+        }
+        .btn-primary:hover { background: var(--green-mid); box-shadow: var(--shadow-md); }
+
+        .btn-secondary {
+            background: var(--white);
+            color: var(--text-dark);
+            border: 1.5px solid #d1d5db;
+        }
+        .btn-secondary:hover { background: #f3f4f6; }
+
+        .btn-blue {
+            background: var(--btn-blue);
+            color: var(--text-dark);
+        }
+        .btn-blue:hover { background: var(--btn-blue-h); }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--green-mid);
+            box-shadow: none;
+            border: 1.5px solid #d1d5db;
+        }
+        .btn-ghost:hover { background: #f0fdf4; }
+
+        /* ======= CAPTCHA ======= */
+        .captcha-box {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #f9fafb;
+            border: 1.5px solid #e5e7eb;
+            border-radius: var(--radius-pill);
+            padding: 10px 18px;
+            width: 100%;
+            max-width: 280px;
+            margin-bottom: 20px;
+            gap: 10px;
+        }
+        .captcha-box input[type="checkbox"] {
+            width: 18px; height: 18px; accent-color: var(--green-dark); cursor: pointer;
+        }
+        .captcha-box span { font-size: 13.5px; color: var(--text-dark); flex: 1; }
+        .captcha-box i { font-size: 18px; color: var(--text-gray); }
+
+        /* ======= DESCRIPCIÓN DE RECUPERACIÓN ======= */
+        .recover-text {
+            text-align: center;
+            font-size: 13.5px;
+            color: var(--text-gray);
+            max-width: 300px;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        /* ======= RESPONSIVE ======= */
+        @media (max-width: 600px) {
+            .auth-card  { flex-direction: column; }
+            .auth-left  { flex: none; padding: 28px; flex-direction: row; gap: 16px; }
+            .auth-right { padding: 32px 24px; }
+            .logo-box   { width: 72px; height: 72px; font-size: 11px; }
+            .logo-box i { font-size: 22px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="auth-card">
+
+    <!-- PANEL IZQUIERDO -->
+    <div class="auth-left" id="auth-left">
+        <div class="logo-box">
+            <i class="fa-solid fa-recycle"></i>
+            Recicladora<br>Diaz
+        </div>
+        <div class="auth-subtitle">Autenticación</div>
+    </div>
+
+    <!-- PANEL DERECHO -->
+    <div class="auth-right">
+
+        <!-- ===== VISTA: LOGIN ===== -->
+        <div id="view-login" class="view <?= $current_view === 'login' ? 'active' : '' ?>">
+
+            <?php if ($success_message && $current_view === 'login'): ?>
+                <div class="alert alert-success">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <?= htmlspecialchars($success_message) ?>
+                </div>
+            <?php endif; ?>
+
+            <?php if ($error_message && $current_view === 'login'): ?>
+                <div class="alert alert-error">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <?= htmlspecialchars($error_message) ?>
+                </div>
+            <?php endif; ?>
+
+            <form method="POST" action="" novalidate style="display:contents;">
+                <input type="hidden" name="action" value="login">
+
+                <div class="input-wrap">
+                    <i class="fa-regular fa-envelope"></i>
+                    <input type="email" name="email" placeholder="Correo electrónico"
+                           value="<?= old('email') ?>" required autocomplete="email">
+                </div>
+                <div class="input-wrap">
+                    <i class="fa-solid fa-lock"></i>
+                    <input type="password" name="password" placeholder="Contraseña"
+                           required autocomplete="current-password">
+                </div>
+
+                <button type="button" class="link-small" onclick="switchView('recover')">
+                    ¿Olvidaste tu contraseña?
+                </button>
+
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-primary">Iniciar sesión</button>
+                    <button type="button" class="btn btn-secondary" onclick="switchView('register')">Crear cuenta</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- ===== VISTA: REGISTRO ===== -->
+        <div id="view-register" class="view <?= $current_view === 'register' ? 'active' : '' ?>">
+            <div class="view-title">Crear cuenta</div>
+
+            <?php if ($error_message && $current_view === 'register'): ?>
+                <div class="alert alert-error">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <?= htmlspecialchars($error_message) ?>
+                </div>
+            <?php endif; ?>
+
+            <form method="POST" action="" novalidate style="display:contents;">
+                <input type="hidden" name="action" value="register">
+
+                <div class="input-wrap">
+                    <i class="fa-solid fa-user"></i>
+                    <input type="text" name="nombre" placeholder="Nombre *"
+                           value="<?= old('nombre') ?>" required>
+                </div>
+                <div class="input-wrap">
+                    <i class="fa-solid fa-user-tag"></i>
+                    <input type="text" name="ap_paterno" placeholder="Apellido paterno *"
+                           value="<?= old('ap_paterno') ?>" required>
+                </div>
+                <div class="input-wrap">
+                    <i class="fa-solid fa-user-tag"></i>
+                    <input type="text" name="ap_materno" placeholder="Apellido materno"
+                           value="<?= old('ap_materno') ?>">
+                </div>
+                <div class="input-wrap">
+                    <i class="fa-regular fa-envelope"></i>
+                    <input type="email" name="email" placeholder="Correo electrónico *"
+                           value="<?= old('email') ?>" required autocomplete="email">
+                </div>
+                <div class="input-wrap">
+                    <i class="fa-solid fa-lock"></i>
+                    <input type="password" name="password" placeholder="Contraseña * (mín. 8 caracteres)"
+                           required autocomplete="new-password">
+                </div>
+
+                <div class="btn-group">
+                    <button type="button" class="btn btn-blue" onclick="switchView('login')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Continuar</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- ===== VISTA: RECUPERAR CONTRASEÑA ===== -->
+        <div id="view-recover" class="view <?= $current_view === 'recover' ? 'active' : '' ?>">
+            <div class="view-title">Recuperar contraseña</div>
+
+            <?php if ($error_message && $current_view === 'recover'): ?>
+                <div class="alert alert-error">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <?= htmlspecialchars($error_message) ?>
+                </div>
+            <?php endif; ?>
+
+            <p class="recover-text">
+                Ingresa tu correo y te enviaremos un código de confirmación para restablecer tu contraseña.
+            </p>
+
+            <form method="POST" action="" novalidate style="display:contents;">
+                <input type="hidden" name="action" value="recover">
+
+                <div class="input-wrap">
+                    <i class="fa-regular fa-envelope"></i>
+                    <input type="email" name="email" placeholder="Correo electrónico"
+                           value="<?= old('email') ?>" required autocomplete="email">
+                </div>
+
+                <div class="captcha-box">
+                    <input type="checkbox" name="captcha" id="captcha">
+                    <span>No soy un robot</span>
+                    <i class="fa-solid fa-arrows-rotate"></i>
+                </div>
+
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-primary">Enviar código</button>
+                    <button type="button" class="btn btn-ghost" onclick="switchView('login')">Cerrar</button>
+                </div>
+            </form>
+        </div>
+
+    </div><!-- /auth-right -->
+</div><!-- /auth-card -->
+
+<script>
+    function switchView(view) {
+        document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+        document.getElementById('view-' + view).classList.add('active');
+
+        const left = document.getElementById('auth-left');
+        left.style.display = (view === 'register') ? 'none' : '';
+    }
+
+    /* Activar el panel izquierdo correcto al cargar según la vista PHP */
+    (function() {
+        const active = document.querySelector('.view.active');
+        if (active && active.id === 'view-register') {
+            document.getElementById('auth-left').style.display = 'none';
+        }
+    })();
+</script>
+</body>
+</html>
