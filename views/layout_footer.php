@@ -1,4 +1,4 @@
-</div><!-- /sections-wrap -->
+</div>
 </main>
 
 <script>

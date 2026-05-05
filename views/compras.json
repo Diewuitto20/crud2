@@ -1,0 +1,20 @@
+[
+    {
+        "id": "69f559b8ef7b4",
+        "fecha": "2026-05-02 01:56:08",
+        "material": "Plástico PET",
+        "proveedor": "f",
+        "cantidad": 5,
+        "precio_kg": 5,
+        "total": 25
+    },
+    {
+        "id": "69f436fe7b0ec",
+        "fecha": "2026-05-01 05:15:42",
+        "material": "Cartón",
+        "proveedor": "diegp",
+        "cantidad": 9,
+        "precio_kg": 4,
+        "total": 36
+    }
+]

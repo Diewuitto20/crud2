@@ -2,8 +2,10 @@
 /* layout_header.php
    Variables esperadas antes del include:
      $pagina_activa  → 'usuarios' | 'material' | 'calendario' | 'compras'
+                       'gestion_compras' | 'respaldos'
      $titulo_pagina  → string
 */
+
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -35,23 +37,23 @@
         body { font-family:'Roboto',sans-serif; background:var(--bg); color:var(--text-dark); display:flex; height:100vh; overflow:hidden; }
 
         /* SIDEBAR */
-        .sidebar { width:var(--sidebar-w); background:var(--white); height:100%; display:flex; flex-direction:column; padding:24px 16px; box-shadow:2px 0 12px rgba(0,0,0,.06); transition:transform var(--transition); z-index:100; }
+        .sidebar { width:var(--sidebar-w); background:var(--white); height:100%; display:flex; flex-direction:column; padding:24px 16px; box-shadow:2px 0 12px rgba(0,0,0,.06); transition:transform var(--transition); z-index:100; flex-shrink:0; }
         .sidebar.hidden { transform:translateX(calc(-1 * var(--sidebar-w))); position:absolute; }
-        .logo-wrap { background:var(--green-dark); border-radius:12px; padding:18px 12px; text-align:center; margin-bottom:32px; }
+        .logo-wrap { background:var(--green-dark); border-radius:12px; padding:18px 12px; text-align:center; margin-bottom:28px; }
         .logo-wrap .logo-icon { font-size:28px; color:#fff; margin-bottom:6px; }
         .logo-wrap .logo-text { color:#fff; font-weight:700; font-size:15px; line-height:1.3; }
         .logo-wrap .logo-sub  { color:rgba(255,255,255,.65); font-size:11px; margin-top:2px; }
-        .nav-menu { list-style:none; flex:1; }
-        .nav-menu li { margin-bottom:4px; }
-        .nav-menu a { display:flex; align-items:center; gap:12px; padding:11px 14px; border-radius:10px; font-size:15px; color:var(--text-gray); text-decoration:none; transition:background var(--transition), color var(--transition); }
-        .nav-menu a i { width:18px; text-align:center; font-size:16px; }
+        .nav-menu { list-style:none; flex:1; overflow-y:auto; }
+        .nav-menu li { margin-bottom:2px; }
+        .nav-menu a { display:flex; align-items:center; gap:12px; padding:11px 14px; border-radius:10px; font-size:14.5px; color:var(--text-gray); text-decoration:none; transition:background var(--transition), color var(--transition); }
+        .nav-menu a i { width:18px; text-align:center; font-size:15px; flex-shrink:0; }
         .nav-menu a:hover { background:#f3f4f6; color:var(--text-dark); }
         .nav-menu a.active { background:var(--green-light); color:var(--green-dark); font-weight:500; }
-        .sidebar-footer { border-top:1px solid var(--border); padding-top:16px; font-size:13px; color:var(--text-gray); text-align:center; }
+        .sidebar-footer { border-top:1px solid var(--border); padding-top:14px; font-size:12px; color:var(--text-gray); text-align:center; margin-top:8px; }
 
         /* MAIN */
-        .main-content { flex:1; display:flex; flex-direction:column; overflow:hidden; }
-        .top-bar { background:var(--white); display:flex; justify-content:space-between; align-items:center; padding:14px 28px; border-bottom:1px solid var(--border); box-shadow:var(--shadow-sm); gap:16px; }
+        .main-content { flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0; }
+        .top-bar { background:var(--white); display:flex; justify-content:space-between; align-items:center; padding:14px 28px; border-bottom:1px solid var(--border); box-shadow:var(--shadow-sm); gap:16px; flex-shrink:0; }
         .top-left { display:flex; align-items:center; gap:16px; }
         .menu-btn { font-size:20px; cursor:pointer; color:var(--text-gray); transition:color var(--transition); background:none; border:none; }
         .menu-btn:hover { color:var(--text-dark); }
@@ -61,8 +63,8 @@
         .search-bar input { border:none; outline:none; font-size:14px; width:100%; background:transparent; }
         .top-right { display:flex; align-items:center; gap:16px; }
         .user-badge { display:flex; align-items:center; gap:10px; font-size:14px; color:var(--text-dark); }
-        .user-avatar { width:34px; height:34px; border-radius:50%; background:var(--green-dark); color:#fff; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; }
-        .logout-btn { display:flex; align-items:center; gap:6px; font-size:14px; color:var(--text-gray); text-decoration:none; padding:7px 14px; border-radius:8px; border:1px solid var(--border); transition:all var(--transition); }
+        .user-avatar { width:34px; height:34px; border-radius:50%; background:var(--green-dark); color:#fff; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; flex-shrink:0; }
+        .logout-btn { display:flex; align-items:center; gap:6px; font-size:14px; color:var(--text-gray); text-decoration:none; padding:7px 14px; border-radius:8px; border:1px solid var(--border); transition:all var(--transition); white-space:nowrap; }
         .logout-btn:hover { background:#fef2f2; color:#dc2626; border-color:#fca5a5; }
 
         /* SECCIONES */
@@ -80,7 +82,7 @@
         /* TABLA */
         .table-card { background:var(--white); border-radius:var(--radius-card); border:1px solid var(--border); overflow:hidden; box-shadow:var(--shadow-sm); }
         .data-table { width:100%; border-collapse:collapse; }
-        .data-table th { background:#f9fafb; font-size:13px; font-weight:500; color:var(--text-gray); text-align:left; padding:12px 16px; border-bottom:1px solid var(--border); text-transform:uppercase; letter-spacing:.4px; }
+        .data-table th { background:#f9fafb; font-size:12px; font-weight:500; color:var(--text-gray); text-align:left; padding:12px 16px; border-bottom:1px solid var(--border); text-transform:uppercase; letter-spacing:.4px; }
         .data-table td { padding:13px 16px; font-size:14px; border-bottom:1px solid #f3f4f6; vertical-align:middle; }
         .data-table tr:last-child td { border-bottom:none; }
         .data-table tr:hover td { background:#fafafa; }
@@ -94,7 +96,7 @@
         .email-link:hover { text-decoration:underline; }
 
         /* BOTÓN PRIMARIO */
-        .btn-primary { display:inline-flex; align-items:center; gap:8px; background:var(--green-dark); color:#fff; border:none; padding:10px 20px; border-radius:var(--radius-pill); font-size:14px; font-weight:500; cursor:pointer; transition:background var(--transition), box-shadow var(--transition); box-shadow:var(--shadow-sm); }
+        .btn-primary { display:inline-flex; align-items:center; gap:8px; background:var(--green-dark); color:#fff; border:none; padding:10px 20px; border-radius:var(--radius-pill); font-size:14px; font-weight:500; cursor:pointer; transition:background var(--transition), box-shadow var(--transition); box-shadow:var(--shadow-sm); text-decoration:none; }
         .btn-primary:hover { background:var(--green-mid); box-shadow:var(--shadow-md); }
         .btn-primary:active { transform:scale(.97); }
 
@@ -111,6 +113,29 @@
         .cal-grid td.today { background:var(--green-light); color:var(--green-dark); font-weight:700; }
         .cal-grid td.today .day-num { background:var(--green-dark); color:#fff; width:24px; height:24px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; }
         .day-num { display:inline-block; }
+
+        /* PUNTOS DE EVENTOS EN EL GRID */
+        .day-dots { display:flex; justify-content:center; gap:3px; margin-top:4px; }
+        .day-dot { width:6px; height:6px; border-radius:50%; background:var(--green-mid); display:inline-block; }
+
+        /* PRÓXIMOS EVENTOS */
+        .upcoming-section { margin-top:24px; background:var(--white); border-radius:var(--radius-card); border:1px solid var(--border); padding:20px 24px; box-shadow:var(--shadow-sm); }
+        .upcoming-title { font-size:1rem; font-weight:600; margin-bottom:16px; color:var(--text-dark); }
+        .upcoming-empty { text-align:center; color:var(--text-gray); padding:20px 0; font-size:.9rem; }
+        .upcoming-list { list-style:none; display:flex; flex-direction:column; gap:12px; }
+        .upcoming-item { display:flex; align-items:center; gap:14px; padding:12px 14px; border-radius:10px; background:var(--bg); transition:background var(--transition); }
+        .upcoming-item:hover { background:#e9ebee; }
+        .upcoming-date { display:flex; flex-direction:column; align-items:center; min-width:42px; background:var(--green-light); color:var(--green-dark); border-radius:8px; padding:6px 8px; line-height:1.1; }
+        .upcoming-date--hoy { background:var(--green-dark); color:#fff; }
+        .upcoming-day { font-size:1.2rem; font-weight:700; }
+        .upcoming-mon { font-size:.65rem; text-transform:uppercase; letter-spacing:.04em; }
+        .upcoming-info { flex:1; min-width:0; }
+        .upcoming-name { font-weight:600; font-size:.95rem; margin:0 0 2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .upcoming-desc { font-size:.8rem; color:var(--text-gray); margin:0 0 3px; }
+        .upcoming-time { font-size:.78rem; color:var(--text-gray); margin:0; }
+        .upcoming-time i { margin-right:4px; }
+        .upcoming-del { background:none; border:none; cursor:pointer; color:#ccc; font-size:.85rem; padding:6px; border-radius:6px; transition:color var(--transition), background var(--transition); }
+        .upcoming-del:hover { color:#dc2626; background:#fef2f2; }
 
         /* MODAL */
         .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; justify-content:center; align-items:center; z-index:1000; backdrop-filter:blur(2px); }
@@ -129,7 +154,7 @@
         .modal-foot { display:flex; gap:10px; justify-content:flex-end; padding:16px 24px; border-top:1px solid var(--border); background:#fafafa; }
         .btn-cancel { padding:9px 20px; border-radius:var(--radius-pill); border:1px solid var(--border); background:var(--white); font-size:14px; cursor:pointer; transition:background var(--transition); }
         .btn-cancel:hover { background:#f3f4f6; }
-        .btn-accept { padding:9px 20px; border-radius:var(--radius-pill); border:none; background:var(--green-dark); color:#fff; font-size:14px; font-weight:500; cursor:pointer; transition:background var(--transition); }
+        .btn-accept { padding:9px 20px; border-radius:var(--radius-pill); border:none; background:var(--green-dark); color:#fff; font-size:14px; font-weight:500; cursor:pointer; transition:background var(--transition); display:inline-flex; align-items:center; gap:6px; }
         .btn-accept:hover { background:var(--green-mid); }
 
         @media (max-width:700px) {
@@ -148,16 +173,46 @@
         <div class="logo-text">Recicladora Diaz</div>
         <div class="logo-sub">Panel de administración</div>
     </div>
+
     <ul class="nav-menu">
-        <li><a href="index.php?menu=usuarios&opc=tabla"   <?= $pagina_activa==='usuarios'   ? 'class="active"':'' ?>>
-            <i class="fa-solid fa-users"></i> Usuarios</a></li>
-        <li><a href="index.php?menu=material&opc=tabla"   <?= $pagina_activa==='material'   ? 'class="active"':'' ?>>
-            <i class="fa-solid fa-box-archive"></i> Material</a></li>
-        <li><a href="index.php?menu=calendario"           <?= $pagina_activa==='calendario' ? 'class="active"':'' ?>>
-            <i class="fa-solid fa-calendar-days"></i> Calendario</a></li>
-        <li><a href="index.php?menu=compras&opc=tabla"    <?= $pagina_activa==='compras'    ? 'class="active"':'' ?>>
-            <i class="fa-solid fa-receipt"></i> Registro de compras</a></li>
+        <li>
+            <a href="index.php?menu=usuarios&opc=tabla"
+               <?= $pagina_activa === 'usuarios' ? 'class="active"' : '' ?>>
+                <i class="fa-solid fa-users"></i> Usuarios
+            </a>
+        </li>
+        <li>
+            <a href="index.php?menu=material&opc=tabla"
+               <?= $pagina_activa === 'material' ? 'class="active"' : '' ?>>
+                <i class="fa-solid fa-box-archive"></i> Material
+            </a>
+        </li>
+        <li>
+            <a href="index.php?menu=calendario"
+               <?= $pagina_activa === 'calendario' ? 'class="active"' : '' ?>>
+                <i class="fa-solid fa-calendar-days"></i> Calendario
+            </a>
+        </li>
+        <li>
+            <a href="index.php?menu=compras&opc=tabla"
+               <?= $pagina_activa === 'compras' ? 'class="active"' : '' ?>>
+                <i class="fa-solid fa-receipt"></i> Registro de compras
+            </a>
+        </li>
+        <li>
+            <a href="index.php?menu=gestion_compras&opc=tabla"
+               <?= $pagina_activa === 'gestion_compras' ? 'class="active"' : '' ?>>
+                <i class="fa-solid fa-scale-unbalanced"></i> Gestión de compras
+            </a>
+        </li>
+        <li>
+            <a href="index.php?menu=respaldos&opc=tabla"
+               <?= $pagina_activa === 'respaldos' ? 'class="active"' : '' ?>>
+                <i class="fa-solid fa-database"></i> Respaldos
+            </a>
+        </li>
     </ul>
+
     <div class="sidebar-footer">Recicladora Diaz &copy; <?= date('Y') ?></div>
 </nav>
 
@@ -174,8 +229,10 @@
         </div>
         <div class="top-right">
             <div class="user-badge">
-                <div class="user-avatar">A</div>
-                <span>Admin</span>
+                <div class="user-avatar">
+                    <?= strtoupper(substr($_SESSION['nombre'] ?? 'A', 0, 1)) ?>
+                </div>
+                <span><?= e($_SESSION['nombre'] ?? 'Admin') ?></span>
             </div>
             <a href="index.php?menu=login" class="logout-btn">
                 <i class="fa-solid fa-right-from-bracket"></i> Cerrar sesión
