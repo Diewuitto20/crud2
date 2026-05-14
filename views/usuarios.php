@@ -14,7 +14,7 @@ try {
     die('Error de conexión: ' . $e->getMessage());
 }
 
-/* ── Validación: solo letras (incluye español) ── */
+/* ── Validación: solo letras ── */
 function soloLetras(string $valor): bool {
     return (bool) preg_match('/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/u', trim($valor));
 }
@@ -27,10 +27,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $nombre = trim($_POST['nombre']     ?? '');
         $ap     = trim($_POST['ap_paterno'] ?? '');
         $am     = trim($_POST['ap_materno'] ?? '');
+        $correo = trim($_POST['correo']     ?? '');
+        $pass   = $_POST['password']        ?? '';
 
         if (!soloLetras($nombre)) die('Error: el nombre solo puede contener letras.');
         if (!soloLetras($ap))     die('Error: el apellido paterno solo puede contener letras.');
         if ($am !== '' && !soloLetras($am)) die('Error: el apellido materno solo puede contener letras.');
+        if (!filter_var($correo, FILTER_VALIDATE_EMAIL)) die('Error: correo electrónico inválido.');
+
+        // Verificar correo duplicado
+        $check = $pdo->prepare("SELECT COUNT(*) FROM usuarios WHERE correo = :correo");
+        $check->execute([':correo' => $correo]);
+        if ($check->fetchColumn() > 0) die('Error: ya existe un usuario con ese correo.');
 
         $stmt = $pdo->prepare("INSERT INTO usuarios (nombre, apellido_paterno, apellido_materno, correo, contrasena, activo)
                                VALUES (:nombre, :ap, :am, :correo, :pass, 1)");
@@ -38,32 +46,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ':nombre' => $nombre,
             ':ap'     => $ap,
             ':am'     => $am,
-            ':correo' => trim($_POST['correo'] ?? ''),
-            ':pass'   => $_POST['password']   ?? '',
+            ':correo' => $correo,
+            ':pass'   => $pass,
         ]);
 
     } elseif ($action === 'editar') {
-        $id     = (int) ($_POST['id'] ?? 0);
-        $nombre = trim($_POST['nombre']     ?? '');
-        $ap     = trim($_POST['ap_paterno'] ?? '');
-        $am     = trim($_POST['ap_materno'] ?? '');
+        $id     = (int) ($_POST['id']        ?? 0);
+        $nombre = trim($_POST['nombre']      ?? '');
+        $ap     = trim($_POST['ap_paterno']  ?? '');
+        $am     = trim($_POST['ap_materno']  ?? '');
+        $correo = trim($_POST['correo']      ?? '');
+        $pass   = $_POST['password']         ?? '';
 
         if (!soloLetras($nombre)) die('Error: el nombre solo puede contener letras.');
         if (!soloLetras($ap))     die('Error: el apellido paterno solo puede contener letras.');
         if ($am !== '' && !soloLetras($am)) die('Error: el apellido materno solo puede contener letras.');
+        if (!filter_var($correo, FILTER_VALIDATE_EMAIL)) die('Error: correo electrónico inválido.');
 
-        if (!empty($_POST['password'])) {
+        // Verificar correo duplicado (excluyendo el usuario actual)
+        $check = $pdo->prepare("SELECT COUNT(*) FROM usuarios WHERE correo = :correo AND id_usuario != :id");
+        $check->execute([':correo' => $correo, ':id' => $id]);
+        if ($check->fetchColumn() > 0) die('Error: ya existe otro usuario con ese correo.');
+
+        if (!empty($pass)) {
             $stmt = $pdo->prepare("UPDATE usuarios SET nombre=:nombre, apellido_paterno=:ap,
                                    apellido_materno=:am, correo=:correo, contrasena=:pass WHERE id_usuario=:id");
-            $stmt->execute([':nombre'=>$nombre,':ap'=>$ap,':am'=>$am,':correo'=>trim($_POST['correo']??''),':pass'=>$_POST['password'],':id'=>$id]);
+            $stmt->execute([
+                ':nombre' => $nombre,
+                ':ap'     => $ap,
+                ':am'     => $am,
+                ':correo' => $correo,
+                ':pass'   => $pass,
+                ':id'     => $id,
+            ]);
         } else {
             $stmt = $pdo->prepare("UPDATE usuarios SET nombre=:nombre, apellido_paterno=:ap,
                                    apellido_materno=:am, correo=:correo WHERE id_usuario=:id");
-            $stmt->execute([':nombre'=>$nombre,':ap'=>$ap,':am'=>$am,':correo'=>trim($_POST['correo']??''),':id'=>$id]);
+            $stmt->execute([
+                ':nombre' => $nombre,
+                ':ap'     => $ap,
+                ':am'     => $am,
+                ':correo' => $correo,
+                ':id'     => $id,
+            ]);
         }
 
     } elseif ($action === 'toggle_activo') {
-        $id    = (int) ($_POST['id']     ?? 0);
+        $id     = (int) ($_POST['id']     ?? 0);
         $activo = (int) ($_POST['activo'] ?? 1);
         $nuevo  = $activo ? 0 : 1;
         $pdo->prepare("UPDATE usuarios SET activo=:activo WHERE id_usuario=:id")
@@ -112,7 +141,7 @@ input.input-error {
     box-shadow: 0 0 0 2px rgba(229,62,62,0.15) !important;
 }
 
-/* ── Modal de confirmación personalizado ── */
+/* ── Confirmación ── */
 .confirm-overlay {
     position: fixed;
     inset: 0;
@@ -196,12 +225,8 @@ input.input-error {
     color: #fff;
 }
 .confirm-btn-ok:hover { filter: brightness(1.08); }
-.confirm-btn-ok.warning-btn {
-    background: #d97706;
-}
-.confirm-btn-ok.info-btn {
-    background: #3b82f6;
-}
+.confirm-btn-ok.warning-btn { background: #d97706; }
+.confirm-btn-ok.info-btn    { background: #3b82f6; }
 </style>
 
         <div class="section-header">
@@ -238,7 +263,7 @@ input.input-error {
                         <th>Apellidos</th>
                         <th>Correo electrónico</th>
                         <th>Estado</th>
-                        <th style="width:120px">Acciones</th>
+                        <th style="width:110px; text-align:center">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -262,7 +287,7 @@ input.input-error {
                                 <span class="badge badge-gray"><i class="fa-solid fa-circle" style="font-size:8px;margin-right:5px"></i>Inactivo</span>
                             <?php endif; ?>
                         </td>
-                        <td>
+                        <td style="white-space:nowrap; text-align:center">
                             <!-- Editar -->
                             <button class="btn-icon" title="Editar"
                                 onclick="abrirEditar(
@@ -276,11 +301,11 @@ input.input-error {
                             </button>
 
                             <!-- Activar / Desactivar -->
-                            <button class="btn-icon <?= $u['activo'] ? 'danger' : '' ?>"
+                            <button class="btn-icon <?= $u['activo'] ? 'danger active-toggle' : '' ?>"
                                     title="<?= $u['activo'] ? 'Desactivar' : 'Activar' ?>"
                                     onclick="confirmarToggle(
                                         <?= $u['id_usuario'] ?>,
-                                        <?= $u['activo'] ?>,
+                                        <?= (int)$u['activo'] ?>,
                                         '<?= e($u['nombre']) ?>'
                                     )">
                                 <i class="fa-solid <?= $u['activo'] ? 'fa-toggle-on' : 'fa-toggle-off' ?>"></i>
@@ -299,7 +324,7 @@ input.input-error {
             </table>
         </div>
 
-<!-- ── MODAL: NUEVO USUARIO ── -->
+<!-- ── NUEVO USUARIO ── -->
 <div class="modal-overlay" id="modalUsuario">
     <div class="modal-box">
         <div class="modal-head">
@@ -361,7 +386,7 @@ input.input-error {
     </div>
 </div>
 
-<!-- ── MODAL: EDITAR USUARIO ── -->
+<!-- ── EDITAR USUARIO ── -->
 <div class="modal-overlay" id="modalEditar">
     <div class="modal-box">
         <div class="modal-head">
@@ -436,7 +461,7 @@ input.input-error {
     </div>
 </div>
 
-<!-- ── MODAL: CONFIRMACIÓN PERSONALIZADO ── -->
+<!-- ── CONFIRMACIÓN PERSONALIZADO ── -->
 <div class="confirm-overlay" id="confirmOverlay">
     <div class="confirm-box">
         <div class="confirm-icon" id="confirmIconWrap">
@@ -451,7 +476,7 @@ input.input-error {
     </div>
 </div>
 
-<!-- Formularios ocultos para toggle y eliminar -->
+<!-- Formularios ocultos -->
 <form method="POST" action="index.php?menu=usuarios&opc=tabla" id="formToggle" style="display:none">
     <input type="hidden" name="action" value="toggle_activo">
     <input type="hidden" name="id"     id="toggle_id">
@@ -463,9 +488,7 @@ input.input-error {
 </form>
 
 <script>
-/* ════════════════════════════════
-   VALIDACIÓN DE CAMPOS
-════════════════════════════════ */
+/* ── VALIDACIÓN DE CAMPOS ── */
 const SOLO_LETRAS   = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/;
 const CHAR_INVALIDO = /[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g;
 
@@ -512,9 +535,7 @@ function validarFormulario(form) {
     return valido;
 }
 
-/* ════════════════════════════════
-   MODAL DE CONFIRMACIÓN
-════════════════════════════════ */
+/* ── MODAL DE CONFIRMACIÓN ── */
 let _confirmCallback = null;
 
 function mostrarConfirm({ tipo = 'danger', icono, titulo, mensaje, txtOk = 'Aceptar', onOk }) {
@@ -523,7 +544,6 @@ function mostrarConfirm({ tipo = 'danger', icono, titulo, mensaje, txtOk = 'Acep
     const icon     = document.getElementById('confirmIcon');
     const btnOk    = document.getElementById('confirmBtnOk');
 
-    // Tipo visual
     iconWrap.className = `confirm-icon ${tipo}`;
     icon.className     = `fa-solid ${icono}`;
     btnOk.className    = `confirm-btn-ok ${tipo === 'warning' ? 'warning-btn' : tipo === 'info' ? 'info-btn' : ''}`;
@@ -534,8 +554,6 @@ function mostrarConfirm({ tipo = 'danger', icono, titulo, mensaje, txtOk = 'Acep
 
     _confirmCallback = onOk;
     overlay.classList.add('active');
-
-    // Cerrar al hacer clic fuera del box
     overlay.onclick = e => { if (e.target === overlay) cerrarConfirm(); };
 }
 
@@ -544,14 +562,18 @@ function cerrarConfirm() {
     _confirmCallback = null;
 }
 
+
 document.getElementById('confirmBtnOk').addEventListener('click', () => {
+    const cb = _confirmCallback;
     cerrarConfirm();
-    if (_confirmCallback) _confirmCallback();
+    if (cb) cb();
 });
 
-/* ════════════════════════════════
-   ACCIONES DE TABLA
-════════════════════════════════ */
+
+
+
+
+/* ── ACCIONES DE TABLA ── */
 function confirmarEliminar(id, nombre) {
     mostrarConfirm({
         tipo:    'danger',
@@ -567,7 +589,7 @@ function confirmarEliminar(id, nombre) {
 }
 
 function confirmarToggle(id, activo, nombre) {
-    const desactivar = activo == 1;
+    const desactivar = activo === 1; // ✅ Comparación estricta
     mostrarConfirm({
         tipo:    desactivar ? 'warning' : 'info',
         icono:   desactivar ? 'fa-toggle-off' : 'fa-toggle-on',
@@ -582,9 +604,7 @@ function confirmarToggle(id, activo, nombre) {
     });
 }
 
-/* ════════════════════════════════
-   ABRIR MODAL EDITAR
-════════════════════════════════ */
+/* ── ABRIR MODAL EDITAR ── */
 function abrirEditar(id, nombre, ap, am, correo) {
     document.getElementById('edit_id').value     = id;
     document.getElementById('edit_nombre').value = nombre;

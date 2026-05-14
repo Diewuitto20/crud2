@@ -6,7 +6,7 @@ session_start();
 $menu = $_GET['menu'] ?? 'login';
 $opc  = $_GET['opc']  ?? 'tabla';
 
-/* ── crear usuario desde el modal ── */
+/* ── Crear usuario ── */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'crear' && $menu === 'usuarios') {
     $env = require __DIR__ . '/../env.php';
     try {
@@ -27,15 +27,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'crear
             ':contrasena' => trim($_POST['password']   ?? ''),
         ]);
     } catch (PDOException $e) {
-        // silencioso
+        // manejo de error
     }
     header('Location: index.php?menu=usuarios&opc=tabla');
     exit;
 }
 
-/* ── Router ── */
+/* ── Función helper usada en las vistas ── */
+
+
+/* ── Rutas ── */
 if ($menu === 'login') {
     include 'login.php';
+
+// ── DASHBOARD (ruta nueva) ──
+} elseif ($menu === 'dashboard') {
+    include 'dashboard.php';
 
 } elseif ($menu === 'usuarios') {
     if ($opc === 'tabla') include 'usuarios.php';
@@ -51,9 +58,24 @@ if ($menu === 'login') {
 
 } elseif ($menu === 'gestion_compras') {
     if ($opc === 'tabla') include 'Gestioncompras.php';
-}
-elseif ($menu === 'respaldos') {
+
+} elseif ($menu === 'respaldos') {
     if ($opc === 'tabla') include 'respaldos.php';
+
+} elseif ($menu === 'ventas') {
+    include 'ventas.php';
+
+} elseif ($menu === 'tickets') {
+    if ($opc === 'tabla') include 'tickets.php';
+
+} elseif ($menu === 'salidas') {
+    if ($opc === 'tabla') include 'salidas.php';
+
+} elseif ($menu === 'metas') {
+    if ($opc === 'tabla') include 'metas.php';
+
+} elseif ($menu === 'auditoria') {
+    if ($opc === 'tabla') include 'auditoria.php';
 
 } else {
     header('Location: index.php?menu=login');

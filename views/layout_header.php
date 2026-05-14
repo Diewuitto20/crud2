@@ -1,10 +1,5 @@
 <?php
-/* layout_header.php
-   Variables esperadas antes del include:
-     $pagina_activa  → 'usuarios' | 'material' | 'calendario' | 'compras'
-                       'gestion_compras' | 'respaldos'
-     $titulo_pagina  → string
-*/
+
 
 ?>
 <!DOCTYPE html>
@@ -36,7 +31,6 @@
         *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
         body { font-family:'Roboto',sans-serif; background:var(--bg); color:var(--text-dark); display:flex; height:100vh; overflow:hidden; }
 
-        /* SIDEBAR */
         .sidebar { width:var(--sidebar-w); background:var(--white); height:100%; display:flex; flex-direction:column; padding:24px 16px; box-shadow:2px 0 12px rgba(0,0,0,.06); transition:transform var(--transition); z-index:100; flex-shrink:0; }
         .sidebar.hidden { transform:translateX(calc(-1 * var(--sidebar-w))); position:absolute; }
         .logo-wrap { background:var(--green-dark); border-radius:12px; padding:18px 12px; text-align:center; margin-bottom:28px; }
@@ -51,7 +45,7 @@
         .nav-menu a.active { background:var(--green-light); color:var(--green-dark); font-weight:500; }
         .sidebar-footer { border-top:1px solid var(--border); padding-top:14px; font-size:12px; color:var(--text-gray); text-align:center; margin-top:8px; }
 
-        /* MAIN */
+        
         .main-content { flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0; }
         .top-bar { background:var(--white); display:flex; justify-content:space-between; align-items:center; padding:14px 28px; border-bottom:1px solid var(--border); box-shadow:var(--shadow-sm); gap:16px; flex-shrink:0; }
         .top-left { display:flex; align-items:center; gap:16px; }
@@ -67,19 +61,16 @@
         .logout-btn { display:flex; align-items:center; gap:6px; font-size:14px; color:var(--text-gray); text-decoration:none; padding:7px 14px; border-radius:8px; border:1px solid var(--border); transition:all var(--transition); white-space:nowrap; }
         .logout-btn:hover { background:#fef2f2; color:#dc2626; border-color:#fca5a5; }
 
-        /* SECCIONES */
         .sections-wrap { flex:1; overflow-y:auto; padding:28px 32px; }
         .section-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
         .section-title { font-size:22px; font-weight:600; color:var(--text-dark); }
 
-        /* TARJETAS */
         .stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px; margin-bottom:24px; }
         .stat-card { background:var(--white); border-radius:var(--radius-card); padding:18px 20px; border:1px solid var(--border); }
         .stat-card .stat-label { font-size:12px; color:var(--text-gray); margin-bottom:6px; }
         .stat-card .stat-value { font-size:26px; font-weight:600; color:var(--text-dark); }
         .stat-card .stat-icon  { font-size:20px; color:var(--green-mid); float:right; margin-top:-4px; }
 
-        /* TABLA */
         .table-card { background:var(--white); border-radius:var(--radius-card); border:1px solid var(--border); overflow:hidden; box-shadow:var(--shadow-sm); }
         .data-table { width:100%; border-collapse:collapse; }
         .data-table th { background:#f9fafb; font-size:12px; font-weight:500; color:var(--text-gray); text-align:left; padding:12px 16px; border-bottom:1px solid var(--border); text-transform:uppercase; letter-spacing:.4px; }
@@ -95,12 +86,12 @@
         .email-link { color:var(--green-mid); text-decoration:none; font-size:13px; }
         .email-link:hover { text-decoration:underline; }
 
-        /* BOTÓN PRIMARIO */
+        
         .btn-primary { display:inline-flex; align-items:center; gap:8px; background:var(--green-dark); color:#fff; border:none; padding:10px 20px; border-radius:var(--radius-pill); font-size:14px; font-weight:500; cursor:pointer; transition:background var(--transition), box-shadow var(--transition); box-shadow:var(--shadow-sm); text-decoration:none; }
         .btn-primary:hover { background:var(--green-mid); box-shadow:var(--shadow-md); }
         .btn-primary:active { transform:scale(.97); }
 
-        /* CALENDARIO */
+       
         .cal-toolbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
         .cal-nav { display:flex; align-items:center; gap:10px; }
         .cal-nav-btn { background:var(--white); border:1px solid var(--border); width:34px; height:34px; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:14px; color:var(--text-gray); transition:all var(--transition); }
@@ -114,11 +105,11 @@
         .cal-grid td.today .day-num { background:var(--green-dark); color:#fff; width:24px; height:24px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; }
         .day-num { display:inline-block; }
 
-        /* PUNTOS DE EVENTOS EN EL GRID */
+       
         .day-dots { display:flex; justify-content:center; gap:3px; margin-top:4px; }
         .day-dot { width:6px; height:6px; border-radius:50%; background:var(--green-mid); display:inline-block; }
 
-        /* PRÓXIMOS EVENTOS */
+        
         .upcoming-section { margin-top:24px; background:var(--white); border-radius:var(--radius-card); border:1px solid var(--border); padding:20px 24px; box-shadow:var(--shadow-sm); }
         .upcoming-title { font-size:1rem; font-weight:600; margin-bottom:16px; color:var(--text-dark); }
         .upcoming-empty { text-align:center; color:var(--text-gray); padding:20px 0; font-size:.9rem; }
@@ -137,7 +128,7 @@
         .upcoming-del { background:none; border:none; cursor:pointer; color:#ccc; font-size:.85rem; padding:6px; border-radius:6px; transition:color var(--transition), background var(--transition); }
         .upcoming-del:hover { color:#dc2626; background:#fef2f2; }
 
-        /* MODAL */
+        
         .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; justify-content:center; align-items:center; z-index:1000; backdrop-filter:blur(2px); }
         .modal-overlay.open { display:flex; }
         .modal-box { background:var(--white); border-radius:16px; width:min(480px,92vw); box-shadow:var(--shadow-md); overflow:hidden; animation:fadeUp .2s ease; }
@@ -206,11 +197,47 @@
             </a>
         </li>
         <li>
-            <a href="index.php?menu=respaldos&opc=tabla"
+        <a href="index.php?menu=respaldos&opc=tabla"
                <?= $pagina_activa === 'respaldos' ? 'class="active"' : '' ?>>
                 <i class="fa-solid fa-database"></i> Respaldos
             </a>
         </li>
+        <li>
+    <a href="index.php?menu=ventas"
+       <?= $pagina_activa === 'ventas' ? 'class="active"' : '' ?>>
+        <i class="fa-solid fa-dollar-sign"></i> Ventas
+    </a>
+</li>
+<li>
+    <a href="index.php?menu=tickets&opc=tabla"
+       <?= $pagina_activa === 'tickets' ? 'class="active"' : '' ?>>
+        <i class="fa-solid fa-ticket"></i> Comprobantes
+    </a>
+</li>
+<li>
+    <a href="index.php?menu=salidas&opc=tabla"
+       <?= $pagina_activa === 'salidas' ? 'class="active"' : '' ?>>
+        <i class="fa-solid fa-truck-ramp-box"></i> Salida de material
+    </a>
+</li>
+<li>
+    <a href="index.php?menu=metas&opc=tabla"
+       <?= $pagina_activa === 'metas' ? 'class="active"' : '' ?>>
+        <i class="fa-solid fa-leaf"></i> Metas ambientales
+    </a>
+</li>
+<li>
+    <a href="index.php?menu=auditoria&opc=tabla"
+       <?= $pagina_activa === 'auditoria' ? 'class="active"' : '' ?>>
+        <i class="fa-solid fa-clipboard-list"></i> Auditoría
+    </a>
+</li>
+<li>
+    <a href="index.php?menu=dashboard"
+       <?= $pagina_activa === 'dashboard' ? 'class="active"' : '' ?>>
+        <i class="fa-solid fa-gauge-high"></i> Dashboard
+    </a>
+</li>
     </ul>
 
     <div class="sidebar-footer">Recicladora Diaz &copy; <?= date('Y') ?></div>

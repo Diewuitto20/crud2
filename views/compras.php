@@ -27,7 +27,7 @@ $pagina_activa = 'compras';
 $titulo_pagina = 'Registro de compras';
 require_once __DIR__ . '/layout_header.php';
 
-/* Helper: etiqueta de color por material */
+/*  etiqueta de color por material */
 function badge_material(string $m): string {
     $map = [
         'Plástico PET' => '#ede9fe;color:#6d28d9',
@@ -115,7 +115,7 @@ function badge_material(string $m): string {
             </table>
         </div>
 
-<!-- ── MODAL NUEVA COMPRA ── -->
+<!-- ── NUEVA COMPRA ── -->
 <div class="modal-overlay" id="modalCompra">
     <div class="modal-box">
         <div class="modal-head">

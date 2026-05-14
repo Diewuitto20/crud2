@@ -1,7 +1,16 @@
 [
     {
+        "id": "6a04fa3fb6a8a",
+        "nombre": "carton",
+        "categoria": "carton",
+        "unidad": "kg",
+        "precio_kg": 23,
+        "stock": 23,
+        "stock_min": 2
+    },
+    {
         "id": "69f56fc7463a4",
-        "nombre": "tik",
+        "nombre": "papel",
         "categoria": "gg",
         "unidad": "kg",
         "precio_kg": 55,

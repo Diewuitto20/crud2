@@ -117,7 +117,7 @@ input.input-error {
     box-shadow: 0 0 0 2px rgba(229,62,62,0.15) !important;
 }
 
-/* ── Modal de confirmación ── */
+/* ── confirmación ── */
 .confirm-overlay {
     position: fixed;
     inset: 0;
@@ -181,10 +181,10 @@ input.input-error {
             </button>
         </div>
 
-        <!-- FORMULARIO INLINE -->
+        
         <div class="mat-form-card" id="matFormCard" style="display:none">
             <h3 style="font-size:16px;font-weight:600;margin-bottom:18px" id="matFormTitulo">Nuevo Material</h3>
-            <!-- Sin onsubmit: la validación se hace antes del modal -->
+           
             <form method="POST" action="index.php?menu=material&opc=tabla" id="formMaterial">
                 <input type="hidden" name="action" id="mat_action" value="crear">
                 <input type="hidden" name="id"     id="mat_id"     value="">
@@ -216,8 +216,7 @@ input.input-error {
                         <label>Unidad de Medida</label>
                         <select name="unidad" id="mat_unidad">
                             <option value="kg">Kilogramos (kg)</option>
-                            <option value="lt">Litros (lt)</option>
-                            <option value="pza">Piezas (pza)</option>
+                         
                         </select>
                     </div>
 
@@ -313,7 +312,7 @@ input.input-error {
             </table>
         </div>
 
-<!-- ── MODAL: CONFIRMACIÓN ── -->
+<!-- ── CONFIRMACIÓN ── -->
 <div class="confirm-overlay" id="confirmOverlay">
     <div class="confirm-box">
         <div class="confirm-icon" id="confirmIconWrap">
@@ -335,9 +334,7 @@ input.input-error {
 </form>
 
 <script>
-/* ════════════════════════════════
-   VALIDACIÓN SOLO LETRAS
-════════════════════════════════ */
+/* VALIDACIÓN SOLO LETRAS*/
 const SOLO_LETRAS   = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/;
 const CHAR_INVALIDO = /[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g;
 
@@ -381,9 +378,7 @@ function validarFormMaterial() {
     return valido;
 }
 
-/* ════════════════════════════════
-   MODAL DE CONFIRMACIÓN
-════════════════════════════════ */
+/* MODAL DE CONFIRMACIÓN*/
 let _confirmCallback = null;
 
 function mostrarConfirm({ tipo = 'danger', icono, titulo, mensaje, txtOk = 'Aceptar', onOk }) {
@@ -415,9 +410,7 @@ document.getElementById('confirmBtnOk').addEventListener('click', () => {
     if (cb) cb();
 });
 
-/* ════════════════════════════════
-   ACCIONES
-════════════════════════════════ */
+/* ACCIONES */
 function confirmarEliminar(id, nombre) {
     mostrarConfirm({
         tipo:    'danger',
@@ -432,7 +425,7 @@ function confirmarEliminar(id, nombre) {
     });
 }
 
-/* Botón guardar: valida primero, luego muestra modal, luego envía */
+/* Botón guardar */
 document.getElementById('btnGuardarMaterial').addEventListener('click', function() {
     const form = document.getElementById('formMaterial');
 
@@ -450,14 +443,12 @@ document.getElementById('btnGuardarMaterial').addEventListener('click', function
             : `¿Está seguro de registrar "${nombre}" como nuevo material?`,
         txtOk: accion === 'editar' ? 'Sí, guardar' : 'Sí, registrar',
         onOk: () => {
-            console.log("ENVIANDO FORM"); // 👈 para debug
-            form.submit(); // 🔥 FORZAMOS envío directo
+            console.log("ENVIANDO FORM"); 
+            form.submit();
         }
     });
 });
-/* ════════════════════════════════
-   FORMULARIO INLINE
-════════════════════════════════ */
+/* FORMULARIO INLINE*/
 document.getElementById('btnNuevoMaterial').addEventListener('click', function() {
     document.getElementById('matFormTitulo').textContent = 'Nuevo Material';
     document.getElementById('mat_action').value = 'crear';

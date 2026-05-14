@@ -1,8 +1,6 @@
 <?php
 
-/* =====================================================================
-   gestion_compras.php
-   ===================================================================== */
+
 require_once __DIR__ . '/data.php';
 
 $env = require __DIR__ . '/../env.php';
@@ -76,7 +74,7 @@ require_once __DIR__ . '/layout_header.php';
 ?>
 
 <style>
-/* ── Modal de confirmación personalizado ── */
+/* ── confirmación personalizado ── */
 .confirm-overlay {
     position: fixed;
     inset: 0;
@@ -238,7 +236,7 @@ require_once __DIR__ . '/layout_header.php';
             </table>
         </div>
 
-<!-- MODAL: Nueva compra -->
+<!-- Nueva compra -->
 <div class="modal-overlay" id="modalCompra">
     <div class="modal-box">
         <div class="modal-head">
@@ -288,7 +286,7 @@ require_once __DIR__ . '/layout_header.php';
     </div>
 </div>
 
-<!-- ── MODAL: CONFIRMACIÓN PERSONALIZADO ── -->
+<!--  CONFIRMACIÓN PERSONALIZADO -->
 <div class="confirm-overlay" id="confirmOverlay">
     <div class="confirm-box">
         <div class="confirm-icon danger" id="confirmIconWrap">
@@ -310,7 +308,7 @@ require_once __DIR__ . '/layout_header.php';
 </form>
 
 <script>
-/* ── Modal de confirmación ── */
+/* ── confirmación ── */
 let _confirmCallback = null;
 
 function mostrarConfirm({ tipo = 'danger', icono, titulo, mensaje, txtOk = 'Aceptar', onOk }) {

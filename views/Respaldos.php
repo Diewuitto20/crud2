@@ -1,5 +1,5 @@
 <?php
-/* respaldos.php */
+
 require_once __DIR__ . '/data.php';
 
 $env = require __DIR__ . '/../env.php';
@@ -216,9 +216,7 @@ require_once __DIR__ . '/layout_header.php';
             </p>
             <ul class="resp-rec-list">
                 <li>Genera un respaldo completo al menos una vez por semana.</li>
-                <li>Guarda los archivos JSON en un lugar seguro fuera del servidor.</li>
-                <li>Exporta el CSV de compras al cierre de cada mes para tener un registro contable.</li>
-                <li>Verifica que los archivos descargados se puedan abrir correctamente.</li>
+                
             </ul>
         </div>
 

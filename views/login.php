@@ -220,15 +220,16 @@ function old(string $key, string $default = ''): string {
             <?php if ($error_message && $current_view === 'login'): ?>
                 <div class="alert alert-error"><i class="fa-solid fa-circle-exclamation"></i><?= htmlspecialchars($error_message) ?></div>
             <?php endif; ?>
-            <form method="POST" action="" novalidate style="display:contents;">
+            <form method="POST" action="" novalidate autocomplete="off" style="display:contents;">
                 <input type="hidden" name="action" value="login">
                 <div class="input-wrap">
                     <i class="fa-regular fa-envelope"></i>
-                    <input type="email" name="email" placeholder="Correo electrónico" value="<?= old('email') ?>" required autocomplete="email">
+                    <!-- autocomplete="new-password" engaña al navegador para evitar el autocompletado de correo -->
+                    <input type="email" name="email" placeholder="Correo electrónico" required autocomplete="new-password">
                 </div>
                 <div class="input-wrap">
                     <i class="fa-solid fa-lock"></i>
-                    <input type="password" name="password" placeholder="Contraseña" required autocomplete="current-password">
+                    <input type="password" name="password" placeholder="Contraseña" required autocomplete="new-password">
                 </div>
                 <button type="button" class="link-small" onclick="switchView('recover')">¿Olvidaste tu contraseña?</button>
                 <div class="btn-group">
@@ -244,12 +245,12 @@ function old(string $key, string $default = ''): string {
             <?php if ($error_message && $current_view === 'register'): ?>
                 <div class="alert alert-error"><i class="fa-solid fa-circle-exclamation"></i><?= htmlspecialchars($error_message) ?></div>
             <?php endif; ?>
-            <form method="POST" action="" novalidate style="display:contents;">
+            <form method="POST" action="" novalidate autocomplete="off" style="display:contents;">
                 <input type="hidden" name="action" value="register">
-                <div class="input-wrap"><i class="fa-solid fa-user"></i><input type="text" name="nombre" placeholder="Nombre *" value="<?= old('nombre') ?>" required></div>
-                <div class="input-wrap"><i class="fa-solid fa-user-tag"></i><input type="text" name="ap_paterno" placeholder="Apellido paterno *" value="<?= old('ap_paterno') ?>" required></div>
-                <div class="input-wrap"><i class="fa-solid fa-user-tag"></i><input type="text" name="ap_materno" placeholder="Apellido materno" value="<?= old('ap_materno') ?>"></div>
-                <div class="input-wrap"><i class="fa-regular fa-envelope"></i><input type="email" name="email" placeholder="Correo electrónico *" value="<?= old('email') ?>" required autocomplete="email"></div>
+                <div class="input-wrap"><i class="fa-solid fa-user"></i><input type="text" name="nombre" placeholder="Nombre *" value="<?= old('nombre') ?>" required autocomplete="off"></div>
+                <div class="input-wrap"><i class="fa-solid fa-user-tag"></i><input type="text" name="ap_paterno" placeholder="Apellido paterno *" value="<?= old('ap_paterno') ?>" required autocomplete="off"></div>
+                <div class="input-wrap"><i class="fa-solid fa-user-tag"></i><input type="text" name="ap_materno" placeholder="Apellido materno" value="<?= old('ap_materno') ?>" autocomplete="off"></div>
+                <div class="input-wrap"><i class="fa-regular fa-envelope"></i><input type="email" name="email" placeholder="Correo electrónico *" value="<?= old('email') ?>" required autocomplete="new-password"></div>
                 <div class="input-wrap"><i class="fa-solid fa-lock"></i><input type="password" name="password" placeholder="Contraseña *" required autocomplete="new-password"></div>
                 <div class="btn-group">
                     <button type="button" class="btn btn-blue" onclick="switchView('login')">Cancelar</button>
@@ -265,9 +266,9 @@ function old(string $key, string $default = ''): string {
                 <div class="alert alert-error"><i class="fa-solid fa-circle-exclamation"></i><?= htmlspecialchars($error_message) ?></div>
             <?php endif; ?>
             <p class="recover-text">Ingresa tu correo y te enviaremos un código de confirmación para restablecer tu contraseña.</p>
-            <form method="POST" action="" novalidate style="display:contents;">
+            <form method="POST" action="" novalidate autocomplete="off" style="display:contents;">
                 <input type="hidden" name="action" value="recover">
-                <div class="input-wrap"><i class="fa-regular fa-envelope"></i><input type="email" name="email" placeholder="Correo electrónico" value="<?= old('email') ?>" required autocomplete="email"></div>
+                <div class="input-wrap"><i class="fa-regular fa-envelope"></i><input type="email" name="email" placeholder="Correo electrónico" required autocomplete="new-password"></div>
                 <div class="captcha-box">
                     <input type="checkbox" name="captcha" id="captcha">
                     <span>No soy un robot</span>

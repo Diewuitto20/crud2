@@ -1,8 +1,5 @@
 <?php
-/* =====================================================================
-   reportes.php  —  Vista del módulo de reportes
-   Muestra resumen de ingresos / compras y botón para generar PDF
-   ===================================================================== */
+
 require_once __DIR__ . '/data.php';
 
 $env = require __DIR__ . '/../env.php';
@@ -20,7 +17,7 @@ try {
 $fecha_ini = $_GET['fecha_ini'] ?? date('Y-m-01');
 $fecha_fin = $_GET['fecha_fin'] ?? date('Y-m-d');
 
-/* ── Datos: Compras (gestion_compras) ── */
+/* ── Datos: Compras  ── */
 $stmt_c = $pdo->prepare(
     "SELECT COUNT(*) AS total_reg,
             COALESCE(SUM(kilos), 0)          AS total_kilos,
@@ -115,7 +112,7 @@ require_once __DIR__ . '/layout_header.php';
             </button>
         </form>
 
-        <!-- KPIs -->
+        
         <div class="kpi-grid">
             <div class="kpi-card">
                 <i class="fa-solid fa-arrow-down-to-bracket kpi-icon"></i>

@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/data.php';
 
-/* ── Acción: crear / eliminar ── */
+/* ──  crear / eliminar ── */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     if ($action === 'crear') {
@@ -25,7 +25,7 @@ $primer_dia  = (int) date('w', mktime(0,0,0,$mes_actual,1,$anio_actual));
 $dias_mes    = (int) date('t', mktime(0,0,0,$mes_actual,1,$anio_actual));
 $dia_hoy     = (int) date('j');
 
-// Nombres en español
+
 $nombres_meses = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio',
                   'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 $nombre_mes = $nombres_meses[$mes_actual];
@@ -44,7 +44,7 @@ foreach ($todos_eventos as $ev) {
     }
 }
 
-// Próximos eventos (hoy en adelante, máx 5)
+// Próximos eventos 
 $proximos = array_filter($todos_eventos, fn($e) => $e['fecha'] >= $hoy_str);
 $proximos = array_slice($proximos, 0, 5);
 

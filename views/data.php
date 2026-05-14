@@ -1,5 +1,5 @@
 <?php
-/* data.php — datos de ejemplo y helpers globales */
+/* datos de ejemplo y helpers globales */
 
 function e(string $s): string {
     return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
@@ -121,3 +121,17 @@ function material_eliminar(string $id): void {
     $materiales = array_filter(materiales_leer(), fn($m) => $m['id'] !== $id);
     materiales_guardar(array_values($materiales));
 }
+function registrar_auditoria(PDO $pdo, string $modulo, string $accion, string $descripcion = '') {
+    $stmt = $pdo->prepare("
+        INSERT INTO auditoria (usuario_nombre, modulo, accion, descripcion, ip)
+        VALUES (:usuario, :modulo, :accion, :desc, :ip)
+    ");
+    $stmt->execute([
+        ':usuario' => $_SESSION['nombre'] ?? 'sistema',
+        ':modulo'  => $modulo,
+        ':accion'  => $accion,
+        ':desc'    => $descripcion,
+        ':ip'      => $_SERVER['REMOTE_ADDR'] ?? '—',
+    ]);
+}
+ 
