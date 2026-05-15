@@ -1,20 +1,20 @@
 [
     {
-        "id": "6a04fa3fb6a8a",
+        "id": "6a065b890a842",
+        "nombre": "Pet",
+        "categoria": "Plastico",
+        "unidad": "kg",
+        "precio_kg": 12,
+        "stock": 60,
+        "stock_min": 20
+    },
+    {
+        "id": "6a0664c8d8987",
         "nombre": "carton",
         "categoria": "carton",
         "unidad": "kg",
         "precio_kg": 23,
-        "stock": 23,
-        "stock_min": 2
-    },
-    {
-        "id": "69f56fc7463a4",
-        "nombre": "papel",
-        "categoria": "gg",
-        "unidad": "kg",
-        "precio_kg": 55,
-        "stock": 45,
-        "stock_min": 4
+        "stock": 99,
+        "stock_min": 10
     }
 ]

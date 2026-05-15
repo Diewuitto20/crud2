@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             trim($_POST['categoria'] ?? ''),
             trim($_POST['unidad']    ?? 'kg'),
             (float) ($_POST['precio_kg'] ?? 0),
-            (float) ($_POST['stock']     ?? 0),
+            (float) ($_POST['stock ']     ?? 0),
             (float) ($_POST['stock_min'] ?? 0)
         );
     } elseif ($action === 'eliminar') {
@@ -193,7 +193,7 @@ input.input-error {
                     <div class="form-row">
                         <label>Nombre del Material</label>
                         <input type="text" name="nombre" id="mat_nombre"
-                               placeholder="Ej: Plástico PET" required
+                               placeholder="Ej: Plástico " required
                                oninput="validarSoloLetras(this, 'err-mat-nombre')">
                         <span class="field-error" id="err-mat-nombre">
                             <i class="fa-solid fa-triangle-exclamation"></i>
@@ -227,7 +227,7 @@ input.input-error {
                     </div>
 
                     <div class="form-row">
-                        <label>Stock Inicial</label>
+                        <label>Stock maximo</label>
                         <input type="number" name="stock" id="mat_stock"
                                placeholder="0" step="0.1" min="0" required>
                     </div>
@@ -267,7 +267,7 @@ input.input-error {
                         <th>MATERIAL</th>
                         <th>CATEGORÍA</th>
                         <th>PRECIO</th>
-                        <th>STOCK ACTUAL</th>
+                        <th>STOCK maximo</th>
                         <th>STOCK MÍNIMO</th>
                         <th style="width:90px">ACCIONES</th>
                     </tr>

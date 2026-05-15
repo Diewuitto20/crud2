@@ -41,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $stmt = $pdo->prepare(
                 "SELECT id_usuario, nombre, apellido_paterno, correo, contrasena
-                 FROM usuarios WHERE correo = :correo LIMIT 1"
+                 FROM usuarios WHERE correo = :correo and activo = 1 LIMIT 1"
             );
             $stmt->execute([':correo' => $correo]);
             $usuario = $stmt->fetch();
