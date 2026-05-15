@@ -1,97 +1,61 @@
 <?php
-require_once 'models/UsuarioModel.php';
+/* =====================================================================
+   controllers/UsuarioController.php
+   ===================================================================== */
+require_once dirname(__DIR__) . '/models/UsuarioModel.php';
+require_once dirname(__DIR__) . '/models/AuditoriaModel.php';
 
 class UsuarioController {
-    private $modelo;
-    
-    public function __construct($db) {
-        $this->modelo = new Usuario($db);
-    }
 
-    public function index():void {
-        try {
-            $usuarios = $this->modelo->listar();
+    public static function manejar(): void {
+        $accion = $_POST['action'] ?? $_GET['action'] ?? '';
 
-            $viewPath = 'views/UsuarioView.php';
-            
-            if (!file_exists($viewPath)) {
-                throw new Exception("La vista '$viewPath' no se encuentra en el servidor.");
-            }
-
-            include $viewPath;
-          
-        } 
-        catch (Throwable $e) {
-            logger("Error en UsuarioController::index -> " . $e->getMessage());
-            include 'views/errors/404.php';
-        }  
-    }
-
-    public function crear():void {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $nombre = $_POST['nombre'] ?? '';
-            $email = $_POST['email'] ?? '';
 
-            if (!empty($nombre) && filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                $this->modelo->guardar($nombre, $email);
+            if ($accion === 'crear') {
+                UsuarioModel::crear(
+                    trim($_POST['nombre']     ?? ''),
+                    trim($_POST['ap_paterno'] ?? ''),
+                    trim($_POST['ap_materno'] ?? ''),
+                    trim($_POST['correo']     ?? ''),
+                    trim($_POST['password']   ?? '')
+                );
+                AuditoriaModel::registrar('usuarios', 'crear', 'Nuevo usuario creado');
+                self::redirigir();
             }
-            header("Location: index.php");
-            exit;
+
+            if ($accion === 'editar') {
+                UsuarioModel::editar(
+                    (int)($_POST['id']        ?? 0),
+                    trim($_POST['nombre']     ?? ''),
+                    trim($_POST['ap_paterno'] ?? ''),
+                    trim($_POST['ap_materno'] ?? ''),
+                    trim($_POST['correo']     ?? '')
+                );
+                AuditoriaModel::registrar('usuarios', 'editar', 'Usuario editado');
+                self::redirigir();
+            }
+
+            if ($accion === 'eliminar') {
+                UsuarioModel::eliminar((int)($_POST['id'] ?? 0));
+                AuditoriaModel::registrar('usuarios', 'eliminar', 'Usuario eliminado');
+                self::redirigir();
+            }
+
+            if ($accion === 'toggle') {
+                $activo = (int)($_POST['activo'] ?? 0);
+                UsuarioModel::toggleActivo((int)($_POST['id'] ?? 0), $activo);
+                AuditoriaModel::registrar('usuarios', $activo ? 'activar' : 'desactivar', 'Estado de usuario cambiado');
+                self::redirigir();
+            }
         }
+
+        /* Cargar vista */
+        include dirname(__DIR__) . '/views/usuarios.php';
     }
 
-    public function borrar(int $id): void {
-        if ($id) {
-            $this->modelo->eliminar($id);
-        }
-        header("Location: index.php");
+    private static function redirigir(): void {
+        header('Location: index.php?menu=usuarios&opc=tabla');
         exit;
     }
-
-  
-    public function editar(int $id):void {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $nombre = $_POST['nombre'] ?? '';
-            $email = $_POST['email'] ?? '';
-
-            if (!empty($nombre) && filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                $this->modelo->actualizar($id, $nombre, $email);
-            }
-
-            header("Location: index.php");
-            exit;
-        }
-
-        // Si es GET, buscamos al usuario para llenar el formulario
-        $usuario = $this->modelo->obtenerPorId($id);
-        if (!$usuario) {
-            header("Location: index.php");
-            exit;
-        }
-    
-        include 'views/editUsuario.php';
-    }
 }
-
-/*
-
-Les  comparto como un extra
-FILTER_VALIDATE_INT
-Valida si es un número entero.
-FILTER_VALIDATE_FLOAT
-Valida números decimales.
-FILTER_VALIDATE_BOOLEAN
-Valida valores booleanos (true, false, 1, 0, "yes", "no").
-FILTER_VALIDATE_EMAIL
-Valida correos electrónicos.
-FILTER_VALIDATE_URL
-Valida URLs.
-FILTER_VALIDATE_IP
-Valida direcciones IP (IPv4 o IPv6).
-FILTER_VALIDATE_MAC
-Valida direcciones MAC.
-FILTER_VALIDATE_REGEXP
-Permite validar usando una expresión regular personalizada.
-*/
-
-?>

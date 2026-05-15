@@ -167,6 +167,11 @@
 
     <ul class="nav-menu">
         <li>
+    <a href="index.php?menu=dashboard" ...>
+        <i class="fa-solid fa-gauge-high"></i> Dashboard
+    </a>
+</li>
+<li>
             <a href="index.php?menu=usuarios&opc=tabla"
                <?= $pagina_activa === 'usuarios' ? 'class="active"' : '' ?>>
                 <i class="fa-solid fa-users"></i> Usuarios
@@ -232,12 +237,7 @@
         <i class="fa-solid fa-clipboard-list"></i> Auditoría
     </a>
 </li>
-<li>
-    <a href="index.php?menu=dashboard"
-       <?= $pagina_activa === 'dashboard' ? 'class="active"' : '' ?>>
-        <i class="fa-solid fa-gauge-high"></i> Dashboard
-    </a>
-</li>
+
     </ul>
 
     <div class="sidebar-footer">Recicladora Diaz &copy; <?= date('Y') ?></div>

@@ -1,9 +1,7 @@
 <?php
 /* =====================================================
    DASHBOARD – Recicladora Diaz
-   Archivo: views/dashboard.php
    ===================================================== */
-
 require_once __DIR__ . '/data.php';
 
 $env = require __DIR__ . '/../env.php';
@@ -14,51 +12,52 @@ try {
         [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]
     );
 
-    /* KPI: Stock total — columnas: stock, stock_min */
+    /* KPI: Stock total */
     $row = $pdo->query("SELECT COALESCE(SUM(stock),0) as total, COUNT(*) as tipos FROM materiales")->fetch();
     $stock_total_kg = (float)$row['total'];
     $stock_tipos    = (int)$row['tipos'];
 
-    /* KPI: Ventas del día — tabla ventas, columna total, fecha */
-    $row = $pdo->query("SELECT COALESCE(SUM(total),0) as monto, COUNT(*) as cnt FROM ventas WHERE DATE(fecha)=CURDATE() AND estado='Activa'")->fetch();
-    $ventas_dia   = (float)$row['monto'];
-    $ventas_trans = (int)$row['cnt'];
-
-    /* KPI: Compras del día — tabla compras, columna total, fecha */
-    $row = $pdo->query("SELECT COALESCE(SUM(total),0) as monto, COUNT(*) as cnt FROM compras WHERE DATE(fecha)=CURDATE()")->fetch();
-    $compras_dia = (float)$row['monto'];
-    $compras_num = (int)$row['cnt'];
-
-    /* Ganancia neta */
-    $ganancia_neta = $ventas_dia - $compras_dia;
-    $margen = $ventas_dia > 0 ? round(($ganancia_neta / $ventas_dia) * 100) : 0;
-
-    /* Alertas stock bajo — stock < stock_min */
+    /* Alertas stock bajo */
     $alertas = $pdo->query(
         "SELECT nombre, stock, stock_min FROM materiales WHERE stock < stock_min ORDER BY nombre"
     )->fetchAll();
 
-    /* Top 5 materiales en stock */
-    $top_materiales = $pdo->query(
-        "SELECT nombre, stock, stock_min FROM materiales ORDER BY stock DESC LIMIT 5"
-    )->fetchAll();
-    $max_kg = !empty($top_materiales) ? max(array_column($top_materiales, 'stock')) : 1;
-    if ($max_kg == 0) $max_kg = 1;
+    /* Datos para gráfica de usuarios */
+    $row = $pdo->query("SELECT SUM(activo = 1) as activos, SUM(activo = 0) as inactivos FROM usuarios")->fetch();
+    $usuarios_activos   = (int)$row['activos'];
+    $usuarios_inactivos = (int)$row['inactivos'];
 
-    /* Actividad reciente hoy */
-    $actividad = $pdo->query(
-        "(SELECT 'compra' as tipo, proveedor as desc1, total as monto, fecha FROM compras WHERE DATE(fecha)=CURDATE())
-         UNION ALL
-         (SELECT 'venta' as tipo, CONCAT('Venta ',id_ventas) as desc1, total as monto, fecha FROM ventas WHERE DATE(fecha)=CURDATE() AND estado='Activa')
-         ORDER BY fecha DESC LIMIT 6"
+    /* Datos para gráfica de materiales */
+    $materiales_grafica = $pdo->query(
+        "SELECT nombre, stock, stock_min FROM materiales ORDER BY stock DESC LIMIT 8"
     )->fetchAll();
+
+    /* KPI: Ventas del día — puede fallar si la tabla no existe */
+    try {
+        $row = $pdo->query("SELECT COALESCE(SUM(total),0) as monto, COUNT(*) as cnt FROM ventas WHERE DATE(fecha)=CURDATE() AND estado='Activa'")->fetch();
+        $ventas_dia   = (float)$row['monto'];
+        $ventas_trans = (int)$row['cnt'];
+    } catch (PDOException $e) { $ventas_dia = 0; $ventas_trans = 0; }
+
+    /* KPI: Compras del día */
+    try {
+        $row = $pdo->query("SELECT COALESCE(SUM(total),0) as monto, COUNT(*) as cnt FROM compras WHERE DATE(fecha)=CURDATE()")->fetch();
+        $compras_dia = (float)$row['monto'];
+        $compras_num = (int)$row['cnt'];
+    } catch (PDOException $e) { $compras_dia = 0; $compras_num = 0; }
+
+    /* Ganancia neta */
+    $ganancia_neta = $ventas_dia - $compras_dia;
+    $margen = $ventas_dia > 0 ? round(($ganancia_neta / $ventas_dia) * 100) : 0;
 
 } catch (PDOException $e) {
     $stock_total_kg = 0; $stock_tipos = 0;
     $ventas_dia = 0;     $ventas_trans = 0;
     $compras_dia = 0;    $compras_num = 0;
     $ganancia_neta = 0;  $margen = 0;
-    $alertas = [];       $top_materiales = []; $max_kg = 1; $actividad = [];
+    $alertas = [];
+    $usuarios_activos = 0; $usuarios_inactivos = 0;
+    $materiales_grafica = [];
 }
 
 $titulo_pagina = 'Dashboard';
@@ -106,6 +105,7 @@ require_once __DIR__ . '/layout_header.php';
 .alert-stock ul    { list-style:none; display:flex; flex-direction:column; gap:3px; }
 .alert-stock li    { font-size:13px; color:#dc2626; font-weight:500; }
 
+/* Gráficas */
 .two-col-dash { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:20px; }
 @media(max-width:700px){ .two-col-dash{ grid-template-columns:1fr; } }
 
@@ -115,28 +115,7 @@ require_once __DIR__ . '/layout_header.php';
     box-shadow:var(--shadow-sm); animation:dashUp .35s .28s ease both;
 }
 .dash-panel-title { font-size:15px; font-weight:700; margin-bottom:16px; color:var(--text-dark); }
-
-.activity-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; height:140px; gap:8px; color:var(--text-gray); font-size:13.5px; }
-.activity-empty i { font-size:28px; opacity:.3; }
-.activity-list  { list-style:none; display:flex; flex-direction:column; gap:10px; }
-.activity-item  { display:flex; align-items:center; gap:12px; padding:10px 12px; background:var(--bg); border-radius:10px; }
-.act-icon  { width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:14px; color:#fff; flex-shrink:0; }
-.act-compra{ background:#7c3aed; }
-.act-venta { background:#16a34a; }
-.act-info  { flex:1; min-width:0; }
-.act-desc  { font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.act-monto { font-size:12px; color:var(--text-gray); }
-
-.mat-row  { margin-bottom:12px; }
-.mat-row:last-child { margin-bottom:0; }
-.mat-meta { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
-.mat-name { font-size:13.5px; font-weight:500; }
-.mat-kg   { font-size:13.5px; font-weight:700; }
-.mat-kg.red { color:#dc2626; }
-.bar-track{ height:7px; background:#e8eaed; border-radius:99px; overflow:hidden; }
-.bar-fill { height:100%; border-radius:99px; transition:width .8s cubic-bezier(.4,0,.2,1); }
-.bar-green{ background:#16a34a; }
-.bar-red  { background:#dc2626; }
+.chart-wrap { position:relative; height:260px; }
 
 .ganancia-banner {
     background:linear-gradient(135deg,#1a5632 0%,#2563eb 100%);
@@ -206,56 +185,25 @@ require_once __DIR__ . '/layout_header.php';
 </div>
 <?php endif; ?>
 
-<!-- Actividad + Top materiales -->
+<!-- Gráficas -->
 <div class="two-col-dash">
+
+    <!-- Gráfica: Usuarios activos vs inactivos (dona) -->
     <div class="dash-panel">
-        <div class="dash-panel-title">Actividad Reciente</div>
-        <?php if (empty($actividad)): ?>
-            <div class="activity-empty">
-                <i class="fa-regular fa-clock"></i>
-                No hay actividad hoy
-            </div>
-        <?php else: ?>
-            <ul class="activity-list">
-                <?php foreach ($actividad as $act): ?>
-                <li class="activity-item">
-                    <div class="act-icon act-<?= e($act['tipo']) ?>">
-                        <i class="fa-solid <?= $act['tipo']==='venta' ? 'fa-arrow-up' : 'fa-arrow-down' ?>"></i>
-                    </div>
-                    <div class="act-info">
-                        <div class="act-desc"><?= e($act['desc1']) ?></div>
-                        <div class="act-monto">$<?= number_format($act['monto'],2) ?></div>
-                    </div>
-                </li>
-                <?php endforeach; ?>
-            </ul>
-        <?php endif; ?>
+        <div class="dash-panel-title">Usuarios — Activos vs Inactivos</div>
+        <div class="chart-wrap">
+            <canvas id="chartUsuarios"></canvas>
+        </div>
     </div>
 
+    <!-- Gráfica: Stock por material (barras) -->
     <div class="dash-panel">
-        <div class="dash-panel-title">Top 5 Materiales en Stock</div>
-        <?php if (empty($top_materiales)): ?>
-            <div class="activity-empty">
-                <i class="fa-solid fa-box-open"></i>
-                Sin materiales registrados
-            </div>
-        <?php else: ?>
-            <?php foreach ($top_materiales as $m):
-                $pct    = $max_kg > 0 ? round(($m['stock'] / $max_kg) * 100) : 0;
-                $alerta = $m['stock'] < $m['stock_min'];
-            ?>
-            <div class="mat-row">
-                <div class="mat-meta">
-                    <span class="mat-name"><?= e($m['nombre']) ?></span>
-                    <span class="mat-kg <?= $alerta ? 'red' : '' ?>"><?= number_format($m['stock']) ?> kg</span>
-                </div>
-                <div class="bar-track">
-                    <div class="bar-fill <?= $alerta ? 'bar-red' : 'bar-green' ?>" style="width:<?= $pct ?>%"></div>
-                </div>
-            </div>
-            <?php endforeach; ?>
-        <?php endif; ?>
+        <div class="dash-panel-title">Stock por Material (kg)</div>
+        <div class="chart-wrap">
+            <canvas id="chartMateriales"></canvas>
+        </div>
     </div>
+
 </div>
 
 <!-- Ganancia neta -->
@@ -267,5 +215,95 @@ require_once __DIR__ . '/layout_header.php';
     </div>
     <div class="gan-icon"><i class="fa-solid fa-dollar-sign"></i></div>
 </div>
+
+<!-- Chart.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+/* ── Gráfica dona: Usuarios ── */
+const ctxU = document.getElementById('chartUsuarios').getContext('2d');
+new Chart(ctxU, {
+    type: 'doughnut',
+    data: {
+        labels: ['Activos', 'Inactivos'],
+        datasets: [{
+            data: [<?= $usuarios_activos ?>, <?= $usuarios_inactivos ?>],
+            backgroundColor: ['#16a34a', '#e5e7eb'],
+            borderColor:     ['#15803d', '#d1d5db'],
+            borderWidth: 2,
+            hoverOffset: 8,
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '68%',
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: { font: { size: 13 }, padding: 16 }
+            },
+            tooltip: {
+                callbacks: {
+                    label: ctx => ` ${ctx.label}: ${ctx.parsed} usuarios`
+                }
+            }
+        }
+    }
+});
+
+/* ── Gráfica barras: Materiales ── */
+const materiales = <?= json_encode(array_column($materiales_grafica, 'nombre')) ?>;
+const stocks     = <?= json_encode(array_map(fn($m) => (float)$m['stock'], $materiales_grafica)) ?>;
+const stocksMins = <?= json_encode(array_map(fn($m) => (float)$m['stock_min'], $materiales_grafica)) ?>;
+
+const colores = stocks.map((s, i) => s < stocksMins[i] ? '#dc2626' : '#16a34a');
+
+const ctxM = document.getElementById('chartMateriales').getContext('2d');
+new Chart(ctxM, {
+    type: 'bar',
+    data: {
+        labels: materiales,
+        datasets: [{
+            label: 'Stock actual (kg)',
+            data: stocks,
+            backgroundColor: colores,
+            borderRadius: 6,
+            borderSkipped: false,
+        }, {
+            label: 'Stock mínimo (kg)',
+            data: stocksMins,
+            type: 'line',
+            borderColor: '#f97316',
+            borderWidth: 2,
+            borderDash: [5, 4],
+            pointRadius: 4,
+            pointBackgroundColor: '#f97316',
+            fill: false,
+            tension: 0,
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: { font: { size: 12 }, padding: 12 }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: { font: { size: 11 } },
+                grid: { color: '#f0f2f5' }
+            },
+            x: {
+                ticks: { font: { size: 11 } },
+                grid: { display: false }
+            }
+        }
+    }
+});
+</script>
 
 <?php require_once __DIR__ . '/layout_footer.php'; ?>

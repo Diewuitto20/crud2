@@ -1,47 +1,37 @@
 <?php
-session_start();
 
-/* Conexión a la BD  */
+
 $env = require __DIR__ . '/../env.php';
-
 try {
     $pdo = new PDO(
         "mysql:host={$env['DB_HOST']};dbname={$env['DB_NAME']};charset={$env['DB_CHARSET']}",
-        $env['DB_USER'],
-        $env['DB_PASS'],
-        [
-            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-        ]
+        $env['DB_USER'], $env['DB_PASS'],
+        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]
     );
 } catch (PDOException $e) {
     die('Error de conexión: ' . $e->getMessage());
 }
 
-/* Variables de estado */
 $error_message   = '';
 $success_message = '';
 $current_view    = 'login';
 
-/* Procesamiento del formulario */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
-    /*  LOGIN  */
+    /* ── LOGIN ── */
     if ($action === 'login') {
         $correo   = trim($_POST['email']    ?? '');
         $password = trim($_POST['password'] ?? '');
 
         if (empty($correo) || empty($password)) {
             $error_message = 'Por favor completa todos los campos.';
-
         } elseif (!filter_var($correo, FILTER_VALIDATE_EMAIL)) {
             $error_message = 'El correo electrónico no es válido.';
-
         } else {
             $stmt = $pdo->prepare(
                 "SELECT id_usuario, nombre, apellido_paterno, correo, contrasena
-                 FROM usuarios WHERE correo = :correo and activo = 1 LIMIT 1"
+                 FROM usuarios WHERE correo = :correo AND activo = 1 LIMIT 1"
             );
             $stmt->execute([':correo' => $correo]);
             $usuario = $stmt->fetch();
@@ -55,12 +45,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['correo']      = $usuario['correo'];
                 $_SESSION['autenticado'] = true;
 
-                header('Location: index.php?menu=usuarios&opc=tabla');
+                header('Location: index.php?menu=dashboard');
                 exit;
             }
         }
 
-    /*  REGISTRO  */
+    /* ── REGISTRO ── */
     } elseif ($action === 'register') {
         $nombre   = trim($_POST['nombre']     ?? '');
         $ap_pat   = trim($_POST['ap_paterno'] ?? '');
@@ -85,16 +75,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error_message = 'Este correo ya está registrado.';
                 $current_view  = 'register';
             } else {
-                $stmt = $pdo->prepare(
+                $pdo->prepare(
                     "INSERT INTO usuarios (nombre, apellido_paterno, apellido_materno, correo, contrasena)
                      VALUES (:nombre, :ap_pat, :ap_mat, :correo, :contrasena)"
-                );
-                $stmt->execute([
+                )->execute([
                     ':nombre'     => $nombre,
                     ':ap_pat'     => $ap_pat,
                     ':ap_mat'     => $ap_mat,
                     ':correo'     => $correo,
-                    ':contrasena' => $password, 
+                    ':contrasena' => $password,
                 ]);
 
                 $success_message = '¡Cuenta creada exitosamente! Ya puedes iniciar sesión.';
@@ -102,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-    /*  RECUPERAR  */
+    /* ── RECUPERAR ── */
     } elseif ($action === 'recover') {
         $correo  = trim($_POST['email'] ?? '');
         $captcha = isset($_POST['captcha']);
@@ -224,12 +213,11 @@ function old(string $key, string $default = ''): string {
                 <input type="hidden" name="action" value="login">
                 <div class="input-wrap">
                     <i class="fa-regular fa-envelope"></i>
-                    <!-- autocomplete="new-password" engaña al navegador para evitar el autocompletado de correo -->
-                    <input type="email" name="email" placeholder="Correo electrónico" required autocomplete="new-password">
+                    <input type="email" name="email" placeholder="Correo electrónico" required autocomplete="off">
                 </div>
                 <div class="input-wrap">
                     <i class="fa-solid fa-lock"></i>
-                    <input type="password" name="password" placeholder="Contraseña" required autocomplete="new-password">
+                    <input type="password" name="password" placeholder="Contraseña" required autocomplete="off">
                 </div>
                 <button type="button" class="link-small" onclick="switchView('recover')">¿Olvidaste tu contraseña?</button>
                 <div class="btn-group">
@@ -250,7 +238,7 @@ function old(string $key, string $default = ''): string {
                 <div class="input-wrap"><i class="fa-solid fa-user"></i><input type="text" name="nombre" placeholder="Nombre *" value="<?= old('nombre') ?>" required autocomplete="off"></div>
                 <div class="input-wrap"><i class="fa-solid fa-user-tag"></i><input type="text" name="ap_paterno" placeholder="Apellido paterno *" value="<?= old('ap_paterno') ?>" required autocomplete="off"></div>
                 <div class="input-wrap"><i class="fa-solid fa-user-tag"></i><input type="text" name="ap_materno" placeholder="Apellido materno" value="<?= old('ap_materno') ?>" autocomplete="off"></div>
-                <div class="input-wrap"><i class="fa-regular fa-envelope"></i><input type="email" name="email" placeholder="Correo electrónico *" value="<?= old('email') ?>" required autocomplete="new-password"></div>
+                <div class="input-wrap"><i class="fa-regular fa-envelope"></i><input type="email" name="email" placeholder="Correo electrónico *" value="<?= old('email') ?>" required autocomplete="off"></div>
                 <div class="input-wrap"><i class="fa-solid fa-lock"></i><input type="password" name="password" placeholder="Contraseña *" required autocomplete="new-password"></div>
                 <div class="btn-group">
                     <button type="button" class="btn btn-blue" onclick="switchView('login')">Cancelar</button>
@@ -268,7 +256,7 @@ function old(string $key, string $default = ''): string {
             <p class="recover-text">Ingresa tu correo y te enviaremos un código de confirmación para restablecer tu contraseña.</p>
             <form method="POST" action="" novalidate autocomplete="off" style="display:contents;">
                 <input type="hidden" name="action" value="recover">
-                <div class="input-wrap"><i class="fa-regular fa-envelope"></i><input type="email" name="email" placeholder="Correo electrónico" required autocomplete="new-password"></div>
+                <div class="input-wrap"><i class="fa-regular fa-envelope"></i><input type="email" name="email" placeholder="Correo electrónico" required autocomplete="off"></div>
                 <div class="captcha-box">
                     <input type="checkbox" name="captcha" id="captcha">
                     <span>No soy un robot</span>

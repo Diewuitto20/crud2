@@ -1,83 +1,87 @@
 <?php
+/* =====================================================================
+   views/index.php  –  Router principal (MVC)
+   ===================================================================== */
 error_reporting(E_ALL & ~E_DEPRECATED);
-ini_set('display_errors', 0);
+ini_set('display_errors', 1); // temporal para ver errores
 session_start();
 
 $menu = $_GET['menu'] ?? 'login';
 $opc  = $_GET['opc']  ?? 'tabla';
 
-/* ── Crear usuario ── */
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'crear' && $menu === 'usuarios') {
-    $env = require __DIR__ . '/../env.php';
-    try {
-        $pdo = new PDO(
-            "mysql:host={$env['DB_HOST']};dbname={$env['DB_NAME']};charset={$env['DB_CHARSET']}",
-            $env['DB_USER'], $env['DB_PASS'],
-            [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-        );
-        $stmt = $pdo->prepare(
-            "INSERT INTO usuarios (nombre, apellido_paterno, apellido_materno, correo, contrasena)
-             VALUES (:nombre, :ap_pat, :ap_mat, :correo, :contrasena)"
-        );
-        $stmt->execute([
-            ':nombre'     => trim($_POST['nombre']     ?? ''),
-            ':ap_pat'     => trim($_POST['ap_paterno'] ?? ''),
-            ':ap_mat'     => trim($_POST['ap_materno'] ?? ''),
-            ':correo'     => trim($_POST['correo']     ?? ''),
-            ':contrasena' => trim($_POST['password']   ?? ''),
-        ]);
-    } catch (PDOException $e) {
-        // manejo de error
+/* Raíz del proyecto (un nivel arriba de views/) */
+$root = dirname(__DIR__);
+
+/* Config compartida */
+require_once $root . '/config/database.php';
+
+/* Autoload de controllers y models */
+spl_autoload_register(function(string $clase) use ($root) {
+    $rutas = [
+        $root . '/controllers/' . $clase . '.php',
+        $root . '/models/'      . $clase . '.php',
+    ];
+    foreach ($rutas as $ruta) {
+        if (file_exists($ruta)) { require_once $ruta; return; }
     }
-    header('Location: index.php?menu=usuarios&opc=tabla');
-    exit;
-}
+});
 
-/* ── Función helper usada en las vistas ── */
+/* ── Router ── */
+switch ($menu) {
 
+    case 'login':
+        include __DIR__ . '/login.php';
+        break;
 
-/* ── Rutas ── */
-if ($menu === 'login') {
-    include 'login.php';
+    case 'dashboard':
+        DashboardController::manejar();
+        break;
 
-// ── DASHBOARD (ruta nueva) ──
-} elseif ($menu === 'dashboard') {
-    include 'dashboard.php';
+    case 'usuarios':
+        UsuarioController::manejar();
+        break;
 
-} elseif ($menu === 'usuarios') {
-    if ($opc === 'tabla') include 'usuarios.php';
+    case 'material':
+        MaterialController::manejar();
+        break;
 
-} elseif ($menu === 'material') {
-    if ($opc === 'tabla') include 'materiales.php';
+    case 'calendario':
+        CalendarioController::manejar();
+        break;
 
-} elseif ($menu === 'calendario') {
-    include 'calendario.php';
+    case 'gestion_compras':
+        CompraController::manejar();
+        break;
 
-} elseif ($menu === 'compras') {
-    if ($opc === 'tabla') include 'compras.php';
+    case 'respaldos':
+        RespaldoController::manejar();
+        break;
 
-} elseif ($menu === 'gestion_compras') {
-    if ($opc === 'tabla') include 'Gestioncompras.php';
+    case 'auditoria':
+        AuditoriaController::manejar();
+        break;
 
-} elseif ($menu === 'respaldos') {
-    if ($opc === 'tabla') include 'respaldos.php';
+    case 'compras':
+        include __DIR__ . '/compras.php';
+        break;
 
-} elseif ($menu === 'ventas') {
-    include 'ventas.php';
+    case 'ventas':
+        include __DIR__ . '/ventas.php';
+        break;
 
-} elseif ($menu === 'tickets') {
-    if ($opc === 'tabla') include 'tickets.php';
+    case 'tickets':
+        include __DIR__ . '/Tickets.php';
+        break;
 
-} elseif ($menu === 'salidas') {
-    if ($opc === 'tabla') include 'salidas.php';
+    case 'salidas':
+        include __DIR__ . '/salidas.php';
+        break;
 
-} elseif ($menu === 'metas') {
-    if ($opc === 'tabla') include 'metas.php';
+    case 'metas':
+        include __DIR__ . '/metas.php';
+        break;
 
-} elseif ($menu === 'auditoria') {
-    if ($opc === 'tabla') include 'auditoria.php';
-
-} else {
-    header('Location: index.php?menu=login');
-    exit;
+    default:
+        header('Location: index.php?menu=login');
+        exit;
 }

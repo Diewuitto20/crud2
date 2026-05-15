@@ -1,38 +1,57 @@
 <?php
-class Usuarios {
-    private $db;
+/* =====================================================================
+   models/UsuarioModel.php  –  Queries de la tabla usuarios
+   ===================================================================== */
+require_once dirname(__DIR__) . '/config/database.php';
 
-    public function __construct($conexion) {
-        $this->db = $conexion;
+class UsuarioModel {
+
+    public static function todos(): array {
+        return get_db()->query("SELECT * FROM usuarios ORDER BY nombre ASC")->fetchAll();
     }
 
-    public function mostrar() {
-        $sql = "SELECT * FROM usuarios ORDER BY id_usuario DESC";
-        return $this->db->query($sql)->fetchAll();
+    public static function buscarPorCorreo(string $correo): ?array {
+        $stmt = get_db()->prepare("SELECT * FROM usuarios WHERE correo = :correo LIMIT 1");
+        $stmt->execute([':correo' => $correo]);
+        $row = $stmt->fetch();
+        return $row ?: null;
     }
 
-    public function guardar($contrasena, $apellido_paterno, $apellido_materno, $correo, $nombre) {
-        $sql = "INSERT INTO usuarios (contrasena, apellido_paterno, apellido_materno, correo, nombre) VALUES (?, ?, ?, ?, ?)";
-        $stmt = $this->db->prepare($sql);
-        return $stmt->execute([trim($contrasena), trim($apellido_paterno), trim($apellido_materno), trim($correo), trim($nombre)]);
+    public static function crear(string $nombre, string $ap_pat, string $ap_mat,
+                                  string $correo, string $contrasena): void {
+        get_db()->prepare(
+            "INSERT INTO usuarios (nombre, apellido_paterno, apellido_materno, correo, contrasena)
+             VALUES (:nombre, :ap_pat, :ap_mat, :correo, :contrasena)"
+        )->execute([
+            ':nombre'     => $nombre,
+            ':ap_pat'     => $ap_pat,
+            ':ap_mat'     => $ap_mat,
+            ':correo'     => $correo,
+            ':contrasena' => $contrasena,
+        ]);
     }
 
-    public function eliminar($id) {
-        $sql = "DELETE FROM usuarios WHERE id_usuario = ?";
-        $stmt = $this->db->prepare($sql);
-        return $stmt->execute([$id]);
+    public static function editar(int $id, string $nombre, string $ap_pat,
+                                   string $ap_mat, string $correo): void {
+        get_db()->prepare(
+            "UPDATE usuarios SET nombre=:nombre, apellido_paterno=:ap_pat,
+             apellido_materno=:ap_mat, correo=:correo WHERE id_usuario=:id"
+        )->execute([
+            ':nombre' => $nombre, ':ap_pat' => $ap_pat,
+            ':ap_mat' => $ap_mat, ':correo' => $correo, ':id' => $id,
+        ]);
     }
 
-    public function buscar($id) {
-        $sql = "SELECT * FROM usuarios WHERE id_usuario = ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$id]);
-        return $stmt->fetch();
+    public static function eliminar(int $id): void {
+        get_db()->prepare("DELETE FROM usuarios WHERE id_usuario=:id")->execute([':id' => $id]);
     }
 
-    public function actualizar($id, $contrasena, $correo) {
-        $sql = "UPDATE usuarios SET contrasena = ?, correo = ? WHERE id_usuario = ?";
-        $stmt = $this->db->prepare($sql);
-        return $stmt->execute([trim($contrasena), trim($correo), $id]);
+    public static function toggleActivo(int $id, int $activo): void {
+        get_db()->prepare("UPDATE usuarios SET activo=:activo WHERE id_usuario=:id")
+                ->execute([':activo' => $activo, ':id' => $id]);
+    }
+
+    public static function total(): int {
+        return (int) get_db()->query("SELECT COUNT(*) FROM usuarios")->fetchColumn();
     }
 }
