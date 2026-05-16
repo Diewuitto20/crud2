@@ -233,8 +233,8 @@
 </li>
 <li>
     <a href="index.php?menu=auditoria&opc=tabla"
-       <?= $pagina_activa === 'auditoria' ? 'class="active"' : '' ?>>
-        <i class="fa-solid fa-clipboard-list"></i> Auditoría
+       <?= $pagina_activa === 'logs' ? 'class="active"' : '' ?>>
+        <i class="fa-solid fa-clipboard-list"></i> Logs
     </a>
 </li>
 

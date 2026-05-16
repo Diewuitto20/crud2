@@ -209,7 +209,7 @@ require_once __DIR__ . '/layout_header.php';
 <!-- Ganancia neta -->
 <div class="ganancia-banner">
     <div class="gan-left">
-        <p>Ganancia Neta del Día</p>
+        <p>Ganancia </p>
         <div class="amount">$<?= number_format($ganancia_neta, 2) ?></div>
         <div class="marg">Margen: <?= $margen ?>%</div>
     </div>

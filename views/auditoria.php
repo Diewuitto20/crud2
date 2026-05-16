@@ -80,7 +80,7 @@ function badge_accion(string $accion): string {
 </style>
 
 <div class="section-header">
-    <div class="section-title"><i class="fa-solid fa-clipboard-list" style="color:var(--green-mid);margin-right:8px;"></i>Bitácora de auditoría</div>
+    <div class="section-title"><i class="fa-solid fa-clipboard-list" style="color:var(--green-mid);margin-right:8px;"></i>Logs</div>
 </div>
 
 <div class="stats-grid">

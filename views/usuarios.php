@@ -200,9 +200,9 @@ input.input-error {
                 </td>
             </tr>
             <?php else: ?>
-            <?php foreach ($usuarios as $u): ?>
+           <?php $loop = 1; foreach ($usuarios as $u): ?>
             <tr>
-                <td><?= $u['id_usuario'] ?></td>
+                <td><?= $loop++ ?></td>
                 <td><strong><?= e($u['nombre']) ?></strong></td>
                 <td><?= e($u['apellido_paterno']) ?> <?= e($u['apellido_materno'] ?? '') ?></td>
                 <td><a href="mailto:<?= e($u['correo']) ?>" class="email-link"><?= e($u['correo']) ?></a></td>
