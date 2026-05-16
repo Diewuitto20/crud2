@@ -118,7 +118,7 @@ function detectar_mysql(): string {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $accion = $_POST['action'] ?? '';
-    $uid    = $_SESSION['id_usuario'] ?? 1;
+    $uid    = $_SESSION['id_usuario'] ?? null;
 
     /* ── 1. Exportar SQL (mysqldump → ZIP con JSONs incluidos) ── */
     if ($accion === 'exportar_sql') {
@@ -138,9 +138,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         chmod($cnfFile, 0600);
 
         $comando = sprintf(
-            '%s --defaults-extra-file=%s %s > %s 2>/dev/null',
+            '%s --defaults-extra-file=%s --ignore-table=%s.respaldos %s > %s 2>/dev/null',
             escapeshellarg($mysqldump),
             escapeshellarg($cnfFile),
+            escapeshellarg($env['DB_NAME']),
             escapeshellarg($env['DB_NAME']),
             escapeshellarg($sqlFile)
         );
@@ -331,7 +332,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $respaldos = $pdo->query(
     "SELECT r.id, r.tipo_operacion, r.nombre_archivo, r.formato,
             r.nombre_bd, r.tamanio_bytes, r.fechayhora, r.observaciones,
-            u.nombre AS creado_por
+            CONCAT(u.nombre, ' ', u.apellido_paterno) AS creado_por
      FROM respaldos r
      LEFT JOIN usuarios u ON u.id_usuario = r.usuario_id
      ORDER BY r.fechayhora DESC"
@@ -638,7 +639,7 @@ require_once __DIR__ . '/layout_header.php';
                 <?php if (empty($respaldos)): ?>
                 <tr><td colspan="9" class="empty-cell">Sin registros de respaldo aún.</td></tr>
                 <?php else: ?>
-                <?php foreach ($respaldos as $r):
+                <?php $num = 1; foreach ($respaldos as $r):
                     $esExport  = $r['tipo_operacion'] === 'EXPORTACION';
                     $bytes     = (int)($r['tamanio_bytes'] ?? 0);
                     $tamano    = $bytes >= 1048576
@@ -646,7 +647,7 @@ require_once __DIR__ . '/layout_header.php';
                                  : ($bytes > 0 ? round($bytes / 1024, 1) . ' KB' : '—');
                 ?>
                 <tr>
-                    <td><?= (int)$r['id'] ?></td>
+                    <td><?= $num++ ?></td>
                     <td>
                         <span class="badge <?= $esExport ? 'badge-blue' : 'badge-amber' ?>">
                             <i class="fa-solid <?= $esExport ? 'fa-download' : 'fa-upload' ?>"></i>
