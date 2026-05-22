@@ -3,7 +3,7 @@
    controllers/RespaldoController.php
    ===================================================================== */
 require_once dirname(__DIR__) . '/models/RespaldoModel.php';
-require_once dirname(__DIR__) . '/models/AuditoriaModel.php';
+require_once dirname(__DIR__) . '/models/LogsModel.php';
 
 class RespaldoController {
 
@@ -15,7 +15,7 @@ class RespaldoController {
             if ($accion === 'eliminar_respaldo') {
                 $id = (int)($_POST['id'] ?? 0);
                 if ($id > 0) { RespaldoModel::eliminar($id); }
-                AuditoriaModel::registrar('respaldos', 'eliminar', 'Registro de respaldo eliminado');
+                LogsModel::registrar('respaldos', 'eliminar', 'Registro de respaldo eliminado');
                 header('Location: index.php?menu=respaldos&opc=tabla');
                 exit;
             }

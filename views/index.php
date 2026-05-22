@@ -57,8 +57,8 @@ switch ($menu) {
         RespaldoController::manejar();
         break;
 
-    case 'auditoria':
-        AuditoriaController::manejar();
+    case 'logs':
+        LogsController::manejar();
         break;
 
     case 'compras':

@@ -1,6 +1,5 @@
 <?php
 require_once __DIR__ . '/data.php';
-// views/ventas.php - corregido: ruta de data.php y env.php
 
 /* ── Conexión BD ── */
 $env = require __DIR__ . '/../env.php';
@@ -45,6 +44,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'cancelar_venta') {
     $id = trim($_POST['id_ventas'] ?? '');
     if ($id) $pdo->prepare("UPDATE ventas SET estado='Cancelada' WHERE id_ventas=?")->execute([$id]);
     header("Location: index.php?menu=ventas&msg=".urlencode("Venta {$id} cancelada.")."&err="); exit;
+}
+
+/* ── ELIMINAR VENTA (solo canceladas) ── */
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'eliminar_venta') {
+    $id = trim($_POST['id_ventas'] ?? '');
+    $msg_ok = $msg_err = '';
+    if ($id) {
+        try {
+            $pdo->beginTransaction();
+            // Primero eliminar el detalle (FK), luego la venta
+            $pdo->prepare("DELETE FROM Detalle_ventas WHERE id_ventas=?")->execute([$id]);
+            $pdo->prepare("DELETE FROM ventas WHERE id_ventas=? AND estado='Cancelada'")->execute([$id]);
+            $pdo->commit();
+            $msg_ok = "Venta {$id} eliminada permanentemente.";
+        } catch (PDOException $e) {
+            $pdo->rollBack();
+            $msg_err = "Error al eliminar: " . $e->getMessage();
+        }
+    } else {
+        $msg_err = "ID de venta no válido.";
+    }
+    header("Location: index.php?menu=ventas&msg=".urlencode($msg_ok)."&err=".urlencode($msg_err)); exit;
 }
 
 $ventas = $pdo->query("
@@ -116,7 +137,14 @@ $pagina_activa = 'ventas';
                 <td>
                     <a href="index.php?menu=ventas&ver=<?= urlencode($v['id_ventas']) ?>" class="btn-icon" title="Ver detalle"><i class="fa-solid fa-eye"></i></a>
                     <?php if ($v['estado']==='Activa'): ?>
-                    <button class="btn-icon danger" title="Cancelar" onclick="confirmarCancelar('<?= e($v['id_ventas']) ?>')"><i class="fa-solid fa-trash"></i></button>
+                        <button class="btn-icon danger" title="Cancelar venta" onclick="confirmarCancelar('<?= e($v['id_ventas']) ?>')">
+                            <i class="fa-solid fa-ban"></i>
+                        </button>
+                    <?php endif; ?>
+                    <?php if ($v['estado']==='Cancelada'): ?>
+                        <button class="btn-icon danger" title="Eliminar permanentemente" onclick="confirmarEliminar('<?= e($v['id_ventas']) ?>')">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
                     <?php endif; ?>
                 </td>
             </tr>
@@ -125,6 +153,7 @@ $pagina_activa = 'ventas';
     </table>
 </div>
 
+<!-- MODAL NUEVA VENTA -->
 <div class="modal-overlay" id="modalNueva">
     <div class="modal-box" style="width:min(560px,95vw)">
         <div class="modal-head">
@@ -183,6 +212,7 @@ $pagina_activa = 'ventas';
     </div>
 </div>
 
+<!-- MODAL VER DETALLE -->
 <?php if ($ver_venta): ?>
 <div class="modal-overlay open" id="modalDetalle">
     <div class="modal-box" style="width:min(540px,95vw)">
@@ -220,6 +250,7 @@ $pagina_activa = 'ventas';
 </div>
 <?php endif; ?>
 
+<!-- MODAL CANCELAR VENTA -->
 <div class="modal-overlay" id="modalCancelar">
     <div class="modal-box" style="width:min(420px,95vw)">
         <div class="modal-head">
@@ -234,7 +265,31 @@ $pagina_activa = 'ventas';
             <input type="hidden" name="id_ventas" id="cancelarIdInput">
             <div class="modal-foot">
                 <button type="button" class="btn-cancel" onclick="cerrarModal('modalCancelar')">No, volver</button>
-                <button type="submit" class="btn-accept" style="background:#dc2626"><i class="fa-solid fa-trash"></i> Sí, cancelar</button>
+                <button type="submit" class="btn-accept" style="background:#f59e0b"><i class="fa-solid fa-ban"></i> Sí, cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL ELIMINAR VENTA -->
+<div class="modal-overlay" id="modalEliminar">
+    <div class="modal-box" style="width:min(420px,95vw)">
+        <div class="modal-head">
+            <h3><i class="fa-solid fa-trash" style="color:#dc2626;margin-right:8px"></i>Eliminar venta</h3>
+            <button class="modal-close" onclick="cerrarModal('modalEliminar')"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="modal-body">
+            <p style="color:var(--text-gray);line-height:1.7">
+                ¿Seguro que deseas eliminar permanentemente la venta <strong id="eliminarIdLabel"></strong>?<br>
+                <span style="color:#dc2626;font-weight:500">Esta acción no se puede deshacer.</span>
+            </p>
+        </div>
+        <form method="POST" action="index.php?menu=ventas">
+            <input type="hidden" name="action" value="eliminar_venta">
+            <input type="hidden" name="id_ventas" id="eliminarIdInput">
+            <div class="modal-foot">
+                <button type="button" class="btn-cancel" onclick="cerrarModal('modalEliminar')">No, volver</button>
+                <button type="submit" class="btn-accept" style="background:#dc2626"><i class="fa-solid fa-trash"></i> Sí, eliminar</button>
             </div>
         </form>
     </div>
@@ -244,7 +299,19 @@ $pagina_activa = 'ventas';
 function abrirModal(id)  { document.getElementById(id).classList.add('open'); }
 function cerrarModal(id) { document.getElementById(id).classList.remove('open'); }
 document.querySelectorAll('.modal-overlay').forEach(o => o.addEventListener('click', e => { if (e.target===o) o.classList.remove('open'); }));
-function confirmarCancelar(id) { document.getElementById('cancelarIdLabel').textContent=id; document.getElementById('cancelarIdInput').value=id; abrirModal('modalCancelar'); }
+
+function confirmarCancelar(id) {
+    document.getElementById('cancelarIdLabel').textContent = id;
+    document.getElementById('cancelarIdInput').value = id;
+    abrirModal('modalCancelar');
+}
+
+function confirmarEliminar(id) {
+    document.getElementById('eliminarIdLabel').textContent = id;
+    document.getElementById('eliminarIdInput').value = id;
+    abrirModal('modalEliminar');
+}
+
 function addItem() {
     document.getElementById('itemsContainer').insertAdjacentHTML('beforeend', `
         <div class="item-row" style="display:flex;gap:10px;align-items:center;margin-bottom:8px">

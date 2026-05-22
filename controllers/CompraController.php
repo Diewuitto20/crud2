@@ -3,7 +3,7 @@
    controllers/CompraController.php
    ===================================================================== */
 require_once dirname(__DIR__) . '/models/CompraModel.php';
-require_once dirname(__DIR__) . '/models/AuditoriaModel.php';
+require_once dirname(__DIR__) . '/models/LogsModel.php';
 
 class CompraController {
 
@@ -20,13 +20,13 @@ class CompraController {
                     (float)($_POST['dinero_recibido'] ?? 0),
                     trim($_POST['fecha'] ?? '')
                 );
-                AuditoriaModel::registrar('compras', 'crear', 'Compra registrada');
+                LogsModel::registrar('compras', 'crear', 'Compra registrada');
                 self::redirigir();
             }
 
             if ($accion === 'eliminar') {
                 CompraModel::eliminar((int)($_POST['id'] ?? 0));
-                AuditoriaModel::registrar('compras', 'eliminar', 'Compra eliminada');
+                LogsModel::registrar('compras', 'eliminar', 'Compra eliminada');
                 self::redirigir();
             }
         }

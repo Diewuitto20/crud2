@@ -1,6 +1,5 @@
 <?php
 
-
 $env = require __DIR__ . '/../env.php';
 try {
     $pdo = new PDO(
@@ -20,35 +19,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
     /* ── LOGIN ── */
-    if ($action === 'login') {
-        $correo   = trim($_POST['email']    ?? '');
-        $password = trim($_POST['password'] ?? '');
+  if ($action === 'login') {
+    $correo   = trim($_POST['email']    ?? '');
+    $password = trim($_POST['password'] ?? '');
 
-        if (empty($correo) || empty($password)) {
-            $error_message = 'Por favor completa todos los campos.';
-        } elseif (!filter_var($correo, FILTER_VALIDATE_EMAIL)) {
-            $error_message = 'El correo electrónico no es válido.';
+    if (empty($correo) || empty($password)) {
+        $error_message = 'Por favor completa todos los campos.';
+    } elseif (!filter_var($correo, FILTER_VALIDATE_EMAIL)) {
+        $error_message = 'El correo electrónico no es válido.';
+    } else {
+        $stmt = $pdo->prepare(
+            "SELECT id_usuario, nombre, apellido_paterno, correo, contrasena, activo
+             FROM usuarios WHERE correo = :correo LIMIT 1"
+        );
+        $stmt->execute([':correo' => $correo]);
+        $usuario = $stmt->fetch();
+
+        if (!$usuario || $password !== $usuario['contrasena']) {
+            $error_message = 'Correo o contraseña incorrectos.';
+        } elseif ($usuario['activo'] == 0) {
+            $error_message = 'Tu cuenta está desactivada. Contacta al administrador.';
         } else {
-            $stmt = $pdo->prepare(
-                "SELECT id_usuario, nombre, apellido_paterno, correo, contrasena
-                 FROM usuarios WHERE correo = :correo AND activo = 1 LIMIT 1"
-            );
-            $stmt->execute([':correo' => $correo]);
-            $usuario = $stmt->fetch();
+            $_SESSION['id_usuario']  = $usuario['id_usuario'];
+            $_SESSION['nombre']      = $usuario['nombre'];
+            $_SESSION['apellido']    = $usuario['apellido_paterno'];
+            $_SESSION['correo']      = $usuario['correo'];
+            $_SESSION['autenticado'] = true;
 
-            if (!$usuario || $password !== $usuario['contrasena']) {
-                $error_message = 'Correo o contraseña incorrectos.';
-            } else {
-                $_SESSION['id_usuario']  = $usuario['id_usuario'];
-                $_SESSION['nombre']      = $usuario['nombre'];
-                $_SESSION['apellido']    = $usuario['apellido_paterno'];
-                $_SESSION['correo']      = $usuario['correo'];
-                $_SESSION['autenticado'] = true;
-
-                header('Location: index.php?menu=dashboard');
-                exit;
-            }
+            header('Location: index.php?menu=dashboard');
+            exit;
         }
+    }
 
     /* ── REGISTRO ── */
     } elseif ($action === 'register') {
@@ -58,6 +59,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $correo   = trim($_POST['email']      ?? '');
         $password = trim($_POST['password']   ?? '');
 
+        $solo_letras = '/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/u';
+
         if (empty($nombre) || empty($ap_pat) || empty($correo) || empty($password)) {
             $error_message = 'Por favor completa todos los campos obligatorios.';
             $current_view  = 'register';
@@ -66,6 +69,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $current_view  = 'register';
         } elseif (strlen($password) < 4) {
             $error_message = 'La contraseña debe tener al menos 4 caracteres.';
+            $current_view  = 'register';
+        } elseif (!preg_match($solo_letras, $nombre)) {
+            $error_message = 'El nombre solo puede contener letras.';
+            $current_view  = 'register';
+        } elseif (!preg_match($solo_letras, $ap_pat)) {
+            $error_message = 'El apellido paterno solo puede contener letras.';
+            $current_view  = 'register';
+        } elseif (!empty($ap_mat) && !preg_match($solo_letras, $ap_mat)) {
+            $error_message = 'El apellido materno solo puede contener letras.';
             $current_view  = 'register';
         } else {
             $stmt = $pdo->prepare("SELECT id_usuario FROM usuarios WHERE correo = :correo LIMIT 1");
@@ -112,7 +124,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-function old(string $key, string $default = ''): string {
+/**
+ * Devuelve el valor de $_POST[$key] solo si el action del POST coincide
+ * con $action_required. Así evitamos que datos de login contaminen el
+ * formulario de registro y viceversa.
+ */
+function old(string $key, string $action_required = '', string $default = ''): string {
+    if ($action_required !== '' && ($_POST['action'] ?? '') !== $action_required) {
+        return $default;
+    }
     return htmlspecialchars($_POST[$key] ?? $default, ENT_QUOTES, 'UTF-8');
 }
 ?>
@@ -181,6 +201,17 @@ function old(string $key, string $default = ''): string {
         .captcha-box span { font-size:13.5px; color:var(--text-dark); flex:1; }
         .captcha-box i { font-size:18px; color:var(--text-gray); }
         .recover-text { text-align:center; font-size:13.5px; color:var(--text-gray); max-width:300px; margin-bottom:20px; line-height:1.6; }
+        .field-error {
+            display: none; color: #e53e3e; font-size: 12px; margin-top: 2px;
+            align-items: center; gap: 5px; animation: fadeIn .15s ease;
+            padding-left: 8px;
+        }
+        .field-error.visible { display: flex; }
+        .field-error i { font-size: 11px; flex-shrink: 0; }
+        @keyframes fadeIn {
+            from { opacity:0; transform:translateY(-3px); }
+            to   { opacity:1; transform:translateY(0); }
+        }
         @media (max-width:600px) {
             .auth-card { flex-direction:column; }
             .auth-left { flex:none; padding:28px; flex-direction:row; gap:16px; }
@@ -213,11 +244,13 @@ function old(string $key, string $default = ''): string {
                 <input type="hidden" name="action" value="login">
                 <div class="input-wrap">
                     <i class="fa-regular fa-envelope"></i>
-                    <input type="email" name="email" placeholder="Correo electrónico" required autocomplete="off">
+                    <input type="email" name="email" placeholder="Correo electrónico" required
+                           autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
                 </div>
                 <div class="input-wrap">
                     <i class="fa-solid fa-lock"></i>
-                    <input type="password" name="password" placeholder="Contraseña" required autocomplete="off">
+                    <input type="password" name="password" placeholder="Contraseña" required
+                           autocomplete="new-password">
                 </div>
                 <button type="button" class="link-small" onclick="switchView('recover')">¿Olvidaste tu contraseña?</button>
                 <div class="btn-group">
@@ -235,11 +268,62 @@ function old(string $key, string $default = ''): string {
             <?php endif; ?>
             <form method="POST" action="" novalidate autocomplete="off" style="display:contents;">
                 <input type="hidden" name="action" value="register">
-                <div class="input-wrap"><i class="fa-solid fa-user"></i><input type="text" name="nombre" placeholder="Nombre *" value="<?= old('nombre') ?>" required autocomplete="off"></div>
-                <div class="input-wrap"><i class="fa-solid fa-user-tag"></i><input type="text" name="ap_paterno" placeholder="Apellido paterno *" value="<?= old('ap_paterno') ?>" required autocomplete="off"></div>
-                <div class="input-wrap"><i class="fa-solid fa-user-tag"></i><input type="text" name="ap_materno" placeholder="Apellido materno" value="<?= old('ap_materno') ?>" autocomplete="off"></div>
-                <div class="input-wrap"><i class="fa-regular fa-envelope"></i><input type="email" name="email" placeholder="Correo electrónico *" value="<?= old('email') ?>" required autocomplete="off"></div>
-                <div class="input-wrap"><i class="fa-solid fa-lock"></i><input type="password" name="password" placeholder="Contraseña *" required autocomplete="new-password"></div>
+
+                <div style="width:100%;max-width:340px;margin-bottom:10px">
+                    <div class="input-wrap" style="margin-bottom:4px">
+                        <i class="fa-solid fa-user"></i>
+                        <input type="text" name="nombre" placeholder="Nombre *"
+                               value="<?= old('nombre', 'register') ?>" required
+                               autocomplete="off"
+                               oninput="validarLetras(this,'err-reg-nombre')">
+                    </div>
+                    <span class="field-error" id="err-reg-nombre">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        Solo se permiten letras. No se aceptan números ni caracteres especiales.
+                    </span>
+                </div>
+
+                <div style="width:100%;max-width:340px;margin-bottom:10px">
+                    <div class="input-wrap" style="margin-bottom:4px">
+                        <i class="fa-solid fa-user-tag"></i>
+                        <input type="text" name="ap_paterno" placeholder="Apellido paterno *"
+                               value="<?= old('ap_paterno', 'register') ?>" required
+                               autocomplete="off"
+                               oninput="validarLetras(this,'err-reg-ap')">
+                    </div>
+                    <span class="field-error" id="err-reg-ap">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        Solo se permiten letras. No se aceptan números ni caracteres especiales.
+                    </span>
+                </div>
+
+                <div style="width:100%;max-width:340px;margin-bottom:10px">
+                    <div class="input-wrap" style="margin-bottom:4px">
+                        <i class="fa-solid fa-user-tag"></i>
+                        <input type="text" name="ap_materno" placeholder="Apellido materno"
+                               value="<?= old('ap_materno', 'register') ?>"
+                               autocomplete="off"
+                               oninput="validarLetras(this,'err-reg-am')">
+                    </div>
+                    <span class="field-error" id="err-reg-am">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        Solo se permiten letras. No se aceptan números ni caracteres especiales.
+                    </span>
+                </div>
+
+                <div class="input-wrap">
+                    <i class="fa-regular fa-envelope"></i>
+                    <input type="email" name="email" placeholder="Correo electrónico *"
+                           value="<?= old('email', 'register') ?>" required
+                           autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                </div>
+
+                <div class="input-wrap">
+                    <i class="fa-solid fa-lock"></i>
+                    <input type="password" name="password" placeholder="Contraseña *" required
+                           autocomplete="new-password">
+                </div>
+
                 <div class="btn-group">
                     <button type="button" class="btn btn-blue" onclick="switchView('login')">Cancelar</button>
                     <button type="submit" class="btn btn-primary">Continuar</button>
@@ -256,7 +340,11 @@ function old(string $key, string $default = ''): string {
             <p class="recover-text">Ingresa tu correo y te enviaremos un código de confirmación para restablecer tu contraseña.</p>
             <form method="POST" action="" novalidate autocomplete="off" style="display:contents;">
                 <input type="hidden" name="action" value="recover">
-                <div class="input-wrap"><i class="fa-regular fa-envelope"></i><input type="email" name="email" placeholder="Correo electrónico" required autocomplete="off"></div>
+                <div class="input-wrap">
+                    <i class="fa-regular fa-envelope"></i>
+                    <input type="email" name="email" placeholder="Correo electrónico" required
+                           autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                </div>
                 <div class="captcha-box">
                     <input type="checkbox" name="captcha" id="captcha">
                     <span>No soy un robot</span>
@@ -272,10 +360,36 @@ function old(string $key, string $default = ''): string {
     </div>
 </div>
 <script>
+    function validarLetras(input, errorId) {
+        const INVALIDO = /[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g;
+        const SOLO     = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/;
+        const errorEl  = document.getElementById(errorId);
+        if (INVALIDO.test(input.value)) {
+            input.value = input.value.replace(INVALIDO, '');
+            errorEl.classList.add('visible');
+            clearTimeout(input._t);
+            input._t = setTimeout(() => {
+                if (SOLO.test(input.value) || input.value === '')
+                    errorEl.classList.remove('visible');
+            }, 3000);
+        } else {
+            errorEl.classList.remove('visible');
+        }
+    }
+
     function switchView(view) {
         document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
         document.getElementById('view-' + view).classList.add('active');
         document.getElementById('auth-left').style.display = (view === 'register') ? 'none' : '';
+
+        /* Limpiar formulario de registro al abrirlo desde login */
+        if (view === 'register') {
+            const form = document.querySelector('#view-register form');
+            if (form) {
+                form.reset();
+                document.querySelectorAll('.field-error').forEach(el => el.classList.remove('visible'));
+            }
+        }
     }
     (function() {
         const active = document.querySelector('.view.active');

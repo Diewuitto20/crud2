@@ -1,10 +1,8 @@
 <?php
-/* =====================================================================
-   models/AuditoriaModel.php  –  Queries de la tabla auditoria
-   ===================================================================== */
+
 require_once dirname(__DIR__) . '/config/database.php';
 
-class AuditoriaModel {
+class LogsModel {
 
     public static function todos(array $filtros = []): array {
         $where  = ['1=1'];

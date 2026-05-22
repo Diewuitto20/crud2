@@ -17,6 +17,15 @@ class MaterialModel {
         return $row ?: null;
     }
 
+    public static function buscarPorNombre(string $nombre): ?array {
+        $stmt = get_db()->prepare(
+            "SELECT * FROM materiales WHERE LOWER(nombre) = LOWER(:nombre) LIMIT 1"
+        );
+        $stmt->execute([':nombre' => $nombre]);
+        $row = $stmt->fetch();
+        return $row ?: null;
+    }
+
     public static function crear(string $nombre, string $categoria, string $unidad,
                                   float $precio_kg, float $stock, float $stock_min,
                                   ?int $id_usuario = null): void {
@@ -24,14 +33,14 @@ class MaterialModel {
             "INSERT INTO materiales (id_material, nombre, categoria, unidad, precio_kg, stock, stock_min, capacidad_maxima, id_usuario)
              VALUES (:id, :nombre, :categoria, :unidad, :precio_kg, :stock, :stock_min, 0, :uid)"
         )->execute([
-            ':id'       => uniqid(),
-            ':nombre'   => $nombre,
-            ':categoria'=> $categoria,
-            ':unidad'   => $unidad,
-            ':precio_kg'=> $precio_kg,
-            ':stock'    => $stock,
-            ':stock_min'=> $stock_min,
-            ':uid'      => $id_usuario,
+            ':id'        => uniqid(),
+            ':nombre'    => $nombre,
+            ':categoria' => $categoria,
+            ':unidad'    => $unidad,
+            ':precio_kg' => $precio_kg,
+            ':stock'     => $stock,
+            ':stock_min' => $stock_min,
+            ':uid'       => $id_usuario,
         ]);
     }
 
@@ -42,9 +51,13 @@ class MaterialModel {
             "UPDATE materiales SET nombre=:nombre, categoria=:categoria, unidad=:unidad,
              precio_kg=:precio_kg, stock=:stock, stock_min=:stock_min WHERE id_material=:id"
         )->execute([
-            ':nombre'   => $nombre, ':categoria'=> $categoria, ':unidad'   => $unidad,
-            ':precio_kg'=> $precio_kg, ':stock' => $stock, ':stock_min'=> $stock_min,
-            ':id'       => $id,
+            ':nombre'    => $nombre,
+            ':categoria' => $categoria,
+            ':unidad'    => $unidad,
+            ':precio_kg' => $precio_kg,
+            ':stock'     => $stock,
+            ':stock_min' => $stock_min,
+            ':id'        => $id,
         ]);
     }
 

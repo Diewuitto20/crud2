@@ -1,8 +1,4 @@
 <?php
-/* =====================================================================
-   config/database.php  –  Conexión PDO compartida (singleton)
-   Uso: $pdo = get_db();
-   ===================================================================== */
 function get_db(): PDO {
     static $pdo = null;
     if ($pdo === null) {

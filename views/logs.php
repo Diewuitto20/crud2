@@ -1,8 +1,8 @@
 <?php
 require_once __DIR__ . '/data.php';
 
-$titulo_pagina = 'Auditoría';
-$pagina_activa = 'auditoria';
+$titulo_pagina = 'Logs';
+$pagina_activa = 'logs';
 
 define('AUDITORIA_FILE', __DIR__ . '/auditoria.json');
 
@@ -12,8 +12,6 @@ function auditoria_leer(): array {
     return is_array($data) ? $data : [];
 }
 
-/* Nota: registrar_auditoria() ya está definida en data.php con PDO.
-   Para JSON, usamos esta versión alternativa: */
 function registrar_log(string $modulo, string $accion, string $descripcion = ''): void {
     $logs   = auditoria_leer();
     $logs[] = [
@@ -25,7 +23,6 @@ function registrar_log(string $modulo, string $accion, string $descripcion = '')
         'descripcion'    => $descripcion,
         'ip'             => $_SERVER['REMOTE_ADDR'] ?? '—',
     ];
-    // Mantener solo los últimos 1000 registros
     if (count($logs) > 1000) $logs = array_slice($logs, -1000);
     file_put_contents(AUDITORIA_FILE, json_encode($logs, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 }
@@ -36,13 +33,13 @@ $filtro_usuario = trim($_GET['usuario'] ?? '');
 $filtro_fecha   = trim($_GET['fecha']   ?? '');
 $buscar         = trim($_GET['buscar']  ?? '');
 
-$all_logs = array_reverse(auditoria_leer()); // más reciente primero
+$all_logs = array_reverse(auditoria_leer());
 
 $logs = array_filter($all_logs, function($l) use ($filtro_modulo, $filtro_usuario, $filtro_fecha, $buscar) {
-    if ($filtro_modulo  && $l['modulo'] !== $filtro_modulo)                       return false;
-    if ($filtro_usuario && stripos($l['usuario_nombre'], $filtro_usuario) === false) return false;
-    if ($filtro_fecha   && substr($l['fecha'], 0, 10) !== $filtro_fecha)          return false;
-    if ($buscar         && stripos($l['descripcion'], $buscar) === false)          return false;
+    if ($filtro_modulo  && $l['modulo'] !== $filtro_modulo)                          return false;
+    if ($filtro_usuario && stripos($l['usuario_nombre'], $filtro_usuario) === false)  return false;
+    if ($filtro_fecha   && substr($l['fecha'], 0, 10) !== $filtro_fecha)             return false;
+    if ($buscar         && stripos($l['descripcion'], $buscar) === false)             return false;
     return true;
 });
 $logs = array_slice($logs, 0, 500);
@@ -91,7 +88,8 @@ function badge_accion(string $accion): string {
 </div>
 
 <form method="GET" action="index.php">
-    <input type="hidden" name="menu" value="auditoria"><input type="hidden" name="opc" value="tabla">
+    <input type="hidden" name="menu" value="logs">
+    <input type="hidden" name="opc" value="tabla">
     <div class="filter-bar">
         <div class="form-row"><label>Buscar descripción</label><input type="text" name="buscar" placeholder="Texto libre…" value="<?= e($buscar) ?>"></div>
         <div class="form-row">
@@ -107,7 +105,7 @@ function badge_accion(string $accion): string {
         <div class="form-row"><label>Fecha</label><input type="date" name="fecha" value="<?= e($filtro_fecha) ?>"></div>
         <div style="display:flex;gap:8px;align-items:flex-end;">
             <button type="submit" class="btn-primary"><i class="fa-solid fa-filter"></i> Filtrar</button>
-            <a href="index.php?menu=auditoria&opc=tabla" class="btn-cancel" style="padding:9px 16px;border-radius:30px;border:1px solid #e5e7eb;background:#fff;font-size:14px;text-decoration:none;color:#374151;display:inline-flex;align-items:center;white-space:nowrap;">Limpiar</a>
+            <a href="index.php?menu=logs&opc=tabla" class="btn-cancel" style="padding:9px 16px;border-radius:30px;border:1px solid #e5e7eb;background:#fff;font-size:14px;text-decoration:none;color:#374151;display:inline-flex;align-items:center;white-space:nowrap;">Limpiar</a>
         </div>
     </div>
 </form>

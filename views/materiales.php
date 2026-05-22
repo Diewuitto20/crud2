@@ -6,11 +6,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
     if ($action === 'crear') {
+        $nombre = $_POST['nombre_sel'] === 'Otro'
+            ? trim($_POST['nombre_otro'] ?? '')
+            : trim($_POST['nombre_sel'] ?? '');
         $categoria = $_POST['categoria'] === 'Otro'
             ? trim($_POST['categoria_otro'] ?? '')
             : trim($_POST['categoria'] ?? '');
         material_crear(
-            trim($_POST['nombre']    ?? ''),
+            $nombre,
             $categoria,
             trim($_POST['unidad']    ?? 'kg'),
             (float) ($_POST['precio_kg'] ?? 0),
@@ -18,12 +21,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             (float) ($_POST['stock_min'] ?? 0)
         );
     } elseif ($action === 'editar') {
+        $nombre = $_POST['nombre_sel'] === 'Otro'
+            ? trim($_POST['nombre_otro'] ?? '')
+            : trim($_POST['nombre_sel'] ?? '');
         $categoria = $_POST['categoria'] === 'Otro'
             ? trim($_POST['categoria_otro'] ?? '')
             : trim($_POST['categoria'] ?? '');
         material_editar(
             trim($_POST['id']        ?? ''),
-            trim($_POST['nombre']    ?? ''),
+            $nombre,
             $categoria,
             trim($_POST['unidad']    ?? 'kg'),
             (float) ($_POST['precio_kg'] ?? 0),
@@ -64,6 +70,22 @@ function badge_categoria(string $cat): string {
     return '<span style="background:'.$bg.';'.$color.
            ';padding:3px 10px;border-radius:20px;font-size:12px;font-weight:500;display:inline-block">'.
            htmlspecialchars($cat, ENT_QUOTES, 'UTF-8').'</span>';
+}
+
+/* Materiales predefinidos por grupo */
+$materiales_predefinidos = [
+    'Metales'        => ['Aluminio', 'Cobre', 'Fierro / Acero', 'Bronce'],
+    'Plásticos'      => ['PET (botellas)', 'HDPE (envases)', 'PVC'],
+    'Papel y Cartón' => ['Cartón corrugado', 'Papel periódico', 'Papel bond', 'Archivo / Documentos'],
+    'Electrónicos'   => ['Electrónicos (e-waste)', 'Baterías'],
+];
+
+/* Lista plana para JS */
+$lista_materiales_plana = [];
+foreach ($materiales_predefinidos as $items) {
+    foreach ($items as $item) {
+        $lista_materiales_plana[] = $item;
+    }
 }
 
 /* Categorías predefinidas */
@@ -114,7 +136,7 @@ $categorias_predefinidas = ['Plástico PET', 'HDPE', 'Cartón', 'Aluminio', 'Vid
     from { opacity:0; transform:translateY(-3px); }
     to   { opacity:1; transform:translateY(0); }
 }
-input.input-error {
+input.input-error, select.input-error {
     border-color: #e53e3e !important;
     box-shadow: 0 0 0 2px rgba(229,62,62,0.15) !important;
 }
@@ -151,7 +173,7 @@ input.input-error {
 .confirm-btn-ok.warning-btn { background:#d97706; }
 .confirm-btn-ok.info-btn    { background:#3b82f6; }
 
-/* Input otro categoría */
+#wrap_nombre_otro,
 #wrap_categoria_otro {
     display: none;
     margin-top: 8px;
@@ -175,26 +197,54 @@ input.input-error {
         <input type="hidden" name="id"     id="mat_id"     value="">
         <div class="mat-form-grid">
 
+            <!-- NOMBRE DEL MATERIAL (desplegable) -->
             <div class="form-row">
                 <label>Nombre del Material</label>
-                <input type="text" name="nombre" id="mat_nombre"
-                       placeholder="Ej: Plástico" required
-                       autocomplete="off"
-                       oninput="validarSoloLetras(this, 'err-mat-nombre')">
+                <select name="nombre_sel" id="mat_nombre_sel"
+                        onchange="toggleOtroNombre(this.value)" required>
+                    <option value="">Seleccionar material...</option>
+                    <?php foreach ($materiales_predefinidos as $grupo => $items): ?>
+                    <optgroup label="<?= htmlspecialchars($grupo, ENT_QUOTES, 'UTF-8') ?>">
+                        <?php foreach ($items as $item): ?>
+                        <option value="<?= htmlspecialchars($item, ENT_QUOTES, 'UTF-8') ?>">
+                            <?= htmlspecialchars($item, ENT_QUOTES, 'UTF-8') ?>
+                        </option>
+                        <?php endforeach; ?>
+                    </optgroup>
+                    <?php endforeach; ?>
+                    <option value="Otro">Otro...</option>
+                </select>
+                <span class="field-error" id="err-mat-nombre-sel">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    Selecciona un nombre de material.
+                </span>
+                <div id="wrap_nombre_otro">
+                    <input type="text" name="nombre_otro" id="mat_nombre_otro"
+                           placeholder="Escribe el nombre del material..."
+                           autocomplete="off"
+                           oninput="validarSoloLetras(this, 'err-mat-nombre')">
+                </div>
                 <span class="field-error" id="err-mat-nombre">
                     <i class="fa-solid fa-triangle-exclamation"></i>
                     Solo se permiten letras.
                 </span>
             </div>
 
+            <!-- CATEGORÍA -->
             <div class="form-row">
                 <label>Categoría</label>
                 <select name="categoria" id="mat_categoria" onchange="toggleOtroCategoria(this.value)" required>
                     <option value="">Seleccionar categoría...</option>
                     <?php foreach ($categorias_predefinidas as $cat): ?>
-                    <option value="<?= e($cat) ?>"><?= e($cat) ?></option>
+                    <option value="<?= htmlspecialchars($cat, ENT_QUOTES, 'UTF-8') ?>">
+                        <?= htmlspecialchars($cat, ENT_QUOTES, 'UTF-8') ?>
+                    </option>
                     <?php endforeach; ?>
                 </select>
+                <span class="field-error" id="err-mat-categoria-sel">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    Selecciona una categoría.
+                </span>
                 <div id="wrap_categoria_otro">
                     <input type="text" name="categoria_otro" id="mat_categoria_otro"
                            placeholder="Escribe la categoría..."
@@ -207,6 +257,7 @@ input.input-error {
                 </span>
             </div>
 
+            <!-- UNIDAD -->
             <div class="form-row">
                 <label>Unidad de Medida</label>
                 <select name="unidad" id="mat_unidad">
@@ -214,22 +265,37 @@ input.input-error {
                 </select>
             </div>
 
+            <!-- PRECIO -->
             <div class="form-row">
                 <label>Precio por kg</label>
                 <input type="number" name="precio_kg" id="mat_precio"
                        placeholder="0.00" step="0.01" min="0" required>
+                <span class="field-error" id="err-mat-precio">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    Ingresa un precio válido.
+                </span>
             </div>
 
+            <!-- STOCK MÁXIMO -->
             <div class="form-row">
                 <label>Stock máximo</label>
                 <input type="number" name="stock" id="mat_stock"
                        placeholder="0" step="0.1" min="0" required>
+                <span class="field-error" id="err-mat-stock">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    Ingresa un stock máximo válido.
+                </span>
             </div>
 
+            <!-- STOCK MÍNIMO -->
             <div class="form-row">
                 <label>Stock Mínimo</label>
                 <input type="number" name="stock_min" id="mat_stock_min"
                        placeholder="0" step="0.1" min="0" required>
+                <span class="field-error" id="err-mat-stock-min">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    Ingresa un stock mínimo válido.
+                </span>
             </div>
 
         </div>
@@ -245,7 +311,7 @@ input.input-error {
 <div class="mat-cat-grid">
     <?php foreach ($por_categoria as $cat => $qty): ?>
     <div class="mat-cat-card">
-        <p class="mat-cat-name"><?= e($cat) ?></p>
+        <p class="mat-cat-name"><?= htmlspecialchars($cat, ENT_QUOTES, 'UTF-8') ?></p>
         <p class="mat-cat-num"><?= $qty ?></p>
         <p class="mat-cat-sub">material<?= $qty !== 1 ? 'es' : '' ?></p>
     </div>
@@ -276,18 +342,18 @@ input.input-error {
             <?php else: ?>
             <?php foreach ($materiales as $m): ?>
             <tr>
-                <td><strong><?= e($m['nombre']) ?></strong></td>
+                <td><strong><?= htmlspecialchars($m['nombre'], ENT_QUOTES, 'UTF-8') ?></strong></td>
                 <td><?= badge_categoria($m['categoria']) ?></td>
                 <td>$<?= number_format($m['precio_kg'], 2) ?>/kg</td>
-                <td><?= number_format($m['stock'], 0) ?> <?= e($m['unidad']) ?></td>
-                <td><?= number_format($m['stock_min'], 0) ?> <?= e($m['unidad']) ?></td>
+                <td><?= number_format($m['stock'], 0) ?> <?= htmlspecialchars($m['unidad'], ENT_QUOTES, 'UTF-8') ?></td>
+                <td><?= number_format($m['stock_min'], 0) ?> <?= htmlspecialchars($m['unidad'], ENT_QUOTES, 'UTF-8') ?></td>
                 <td>
                     <button class="btn-icon" title="Editar"
                         onclick="editarMaterial(
-                            '<?= e($m['id']) ?>',
-                            '<?= e($m['nombre']) ?>',
-                            '<?= e($m['categoria']) ?>',
-                            '<?= e($m['unidad']) ?>',
+                            '<?= htmlspecialchars($m['id'],        ENT_QUOTES, 'UTF-8') ?>',
+                            '<?= htmlspecialchars($m['nombre'],    ENT_QUOTES, 'UTF-8') ?>',
+                            '<?= htmlspecialchars($m['categoria'], ENT_QUOTES, 'UTF-8') ?>',
+                            '<?= htmlspecialchars($m['unidad'],    ENT_QUOTES, 'UTF-8') ?>',
                             '<?= $m['precio_kg'] ?>',
                             '<?= $m['stock'] ?>',
                             '<?= $m['stock_min'] ?>'
@@ -295,7 +361,10 @@ input.input-error {
                         <i class="fa-solid fa-pen-to-square" style="color:#2563eb"></i>
                     </button>
                     <button class="btn-icon danger" title="Eliminar"
-                        onclick="confirmarEliminar('<?= e($m['id']) ?>', '<?= e($m['nombre']) ?>')">
+                        onclick="confirmarEliminar(
+                            '<?= htmlspecialchars($m['id'],     ENT_QUOTES, 'UTF-8') ?>',
+                            '<?= htmlspecialchars($m['nombre'], ENT_QUOTES, 'UTF-8') ?>'
+                        )">
                         <i class="fa-regular fa-trash-can" style="color:#dc2626"></i>
                     </button>
                 </td>
@@ -326,9 +395,83 @@ input.input-error {
     <input type="hidden" name="id"     id="eliminar_id">
 </form>
 
+<!-- MODAL DUPLICADO -->
+<?php if (!empty($_SESSION['duplicado'])): ?>
+<?php $dup = $_SESSION['duplicado']; ?>
+<div class="confirm-overlay active" id="modalDuplicado">
+    <div class="confirm-box">
+        <div class="confirm-icon warning">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <div class="confirm-title">Material ya registrado</div>
+        <div class="confirm-msg">
+            Ya existe <strong><?= htmlspecialchars($dup['nombre'], ENT_QUOTES, 'UTF-8') ?></strong>
+            en el catálogo.<br><br>
+            ¿Deseas actualizar su precio ($<?= number_format($dup['precio_kg'], 2) ?>/kg)
+            y stock (máx: <?= $dup['stock'] ?> kg, mín: <?= $dup['stock_min'] ?> kg)
+            con los nuevos valores?
+        </div>
+        <div class="confirm-btns">
+            <form method="POST" action="index.php?menu=material&opc=tabla" style="flex:1;display:flex">
+                <input type="hidden" name="action" value="cancelar_duplicado">
+                <button type="submit" class="confirm-btn-cancel" style="width:100%">Cancelar</button>
+            </form>
+            <form method="POST" action="index.php?menu=material&opc=tabla" style="flex:1;display:flex">
+                <input type="hidden" name="action" value="actualizar_existente">
+                <button type="submit" class="confirm-btn-ok warning-btn" style="width:100%">Sí, actualizar</button>
+            </form>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <script>
+/* ── Listas para validación ── */
+const MATERIALES_PREDEFINIDOS = <?= json_encode($lista_materiales_plana) ?>;
 const CATEGORIAS_PREDEFINIDAS = <?= json_encode($categorias_predefinidas) ?>;
 
+/* ── Mapeo nombre → categoría ── */
+const NOMBRE_A_CATEGORIA = {
+    'Aluminio':               'Aluminio',
+    'Cobre':                  'Aluminio',
+    'Fierro / Acero':         'Aluminio',
+    'Bronce':                 'Aluminio',
+    'PET (botellas)':         'Plástico PET',
+    'HDPE (envases)':         'HDPE',
+    'PVC':                    'Plástico PET',
+    'Cartón corrugado':       'Cartón',
+    'Papel periódico':        'Cartón',
+    'Papel bond':             'Cartón',
+    'Archivo / Documentos':   'Cartón',
+    'Electrónicos (e-waste)': 'Otro',
+    'Baterías':               'Otro',
+};
+
+/* ── Toggle: Nombre del material ── */
+/* limpiar=true cuando el usuario cambia el select manualmente */
+function toggleOtroNombre(val, limpiar = true) {
+    const wrap  = document.getElementById('wrap_nombre_otro');
+    const input = document.getElementById('mat_nombre_otro');
+    if (val === 'Otro') {
+        wrap.style.display = 'block';
+        input.required = true;
+        if (limpiar) { input.value = ''; input.focus(); }
+    } else {
+        wrap.style.display = 'none';
+        input.required = false;
+        if (limpiar) input.value = '';
+    }
+
+    /* Autocompletar categoría solo cuando el usuario elige (limpiar=true) */
+    if (limpiar && val && val !== 'Otro' && NOMBRE_A_CATEGORIA[val]) {
+        const selCat = document.getElementById('mat_categoria');
+        selCat.value = NOMBRE_A_CATEGORIA[val];
+        selCat.classList.remove('input-error');
+        toggleOtroCategoria(selCat.value);
+    }
+}
+
+/* ── Toggle: Categoría ── */
 function toggleOtroCategoria(val) {
     const wrap  = document.getElementById('wrap_categoria_otro');
     const input = document.getElementById('mat_categoria_otro');
@@ -343,8 +486,9 @@ function toggleOtroCategoria(val) {
     }
 }
 
-const SOLO_LETRAS   = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/;
-const CHAR_INVALIDO = /[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g;
+/* ── Validación letras ── */
+const SOLO_LETRAS   = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\/\(\)]+$/;
+const CHAR_INVALIDO = /[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\/\(\)]/g;
 
 function validarSoloLetras(input, errorId) {
     const errorEl    = document.getElementById(errorId);
@@ -366,29 +510,101 @@ function validarSoloLetras(input, errorId) {
     }
 }
 
+/* ── Validación del formulario ── */
+function mostrarError(elId, msgId) {
+    document.getElementById(elId)?.classList.add('input-error');
+    const msg = document.getElementById(msgId);
+    if (msg) msg.classList.add('visible');
+}
+function quitarError(elId, msgId) {
+    document.getElementById(elId)?.classList.remove('input-error');
+    const msg = document.getElementById(msgId);
+    if (msg) msg.classList.remove('visible');
+}
+
 function validarFormMaterial() {
-    const nombre = document.getElementById('mat_nombre').value.trim();
-    const cat    = document.getElementById('mat_categoria').value;
-    const catOtro = document.getElementById('mat_categoria_otro').value.trim();
     let valido = true;
 
-    if (!nombre || !SOLO_LETRAS.test(nombre)) {
-        document.getElementById('mat_nombre').classList.add('input-error');
-        document.getElementById('err-mat-nombre').classList.add('visible');
+    /* Nombre */
+    const selNombre  = document.getElementById('mat_nombre_sel');
+    const nombreOtro = document.getElementById('mat_nombre_otro').value.trim();
+
+    if (!selNombre.value) {
+        mostrarError('mat_nombre_sel', 'err-mat-nombre-sel');
+        valido = false;
+    } else {
+        quitarError('mat_nombre_sel', 'err-mat-nombre-sel');
+        if (selNombre.value === 'Otro') {
+            if (!nombreOtro || !SOLO_LETRAS.test(nombreOtro)) {
+                mostrarError('mat_nombre_otro', 'err-mat-nombre');
+                valido = false;
+            } else {
+                quitarError('mat_nombre_otro', 'err-mat-nombre');
+            }
+        }
+    }
+
+    /* Categoría */
+    const selCat  = document.getElementById('mat_categoria');
+    const catOtro = document.getElementById('mat_categoria_otro').value.trim();
+
+    if (!selCat.value) {
+        mostrarError('mat_categoria', 'err-mat-categoria-sel');
+        valido = false;
+    } else {
+        quitarError('mat_categoria', 'err-mat-categoria-sel');
+        if (selCat.value === 'Otro') {
+            if (!catOtro || !SOLO_LETRAS.test(catOtro)) {
+                mostrarError('mat_categoria_otro', 'err-mat-categoria');
+                valido = false;
+            } else {
+                quitarError('mat_categoria_otro', 'err-mat-categoria');
+            }
+        }
+    }
+
+    /* Precio */
+    const precioEl = document.getElementById('mat_precio');
+    const precio   = parseFloat(precioEl.value);
+    if (precioEl.value === '' || isNaN(precio) || precio < 0) {
+        mostrarError('mat_precio', 'err-mat-precio');
+        valido = false;
+    } else {
+        quitarError('mat_precio', 'err-mat-precio');
+    }
+
+    /* Stock máximo y mínimo */
+    const stockMax = document.getElementById('mat_stock');
+    const stockMin = document.getElementById('mat_stock_min');
+    const vMax = parseFloat(stockMax.value);
+    const vMin = parseFloat(stockMin.value);
+
+    if (stockMax.value === '' || isNaN(vMax) || vMax < 0) {
+        mostrarError('mat_stock', 'err-mat-stock');
+        valido = false;
+    } else {
+        quitarError('mat_stock', 'err-mat-stock');
+    }
+
+    if (stockMin.value === '' || isNaN(vMin) || vMin < 0) {
+        mostrarError('mat_stock_min', 'err-mat-stock-min');
+        valido = false;
+    } else {
+        quitarError('mat_stock_min', 'err-mat-stock-min');
+    }
+
+    /* Stock mínimo debe ser menor al máximo */
+    if (!isNaN(vMax) && !isNaN(vMin) && stockMax.value !== '' && stockMin.value !== '' && vMin >= vMax) {
+        mostrarError('mat_stock', 'err-mat-stock');
+        mostrarError('mat_stock_min', 'err-mat-stock-min');
+        document.getElementById('err-mat-stock-min').textContent = '⚠ El stock mínimo debe ser menor al stock máximo.';
         valido = false;
     }
-    if (!cat) {
-        document.getElementById('mat_categoria').style.borderColor = '#e53e3e';
-        valido = false;
-    }
-    if (cat === 'Otro' && (!catOtro || !SOLO_LETRAS.test(catOtro))) {
-        document.getElementById('mat_categoria_otro').classList.add('input-error');
-        document.getElementById('err-mat-categoria').classList.add('visible');
-        valido = false;
-    }
+
     return valido;
 }
 
+/* ── Modal de confirmación ── */
 let _confirmCallback = null;
 
 function mostrarConfirm({ tipo = 'danger', icono, titulo, mensaje, txtOk = 'Aceptar', onOk }) {
@@ -418,6 +634,7 @@ document.getElementById('confirmBtnOk').addEventListener('click', () => {
     if (cb) cb();
 });
 
+/* ── Eliminar ── */
 function confirmarEliminar(id, nombre) {
     mostrarConfirm({
         tipo: 'danger', icono: 'fa-trash-can',
@@ -431,10 +648,16 @@ function confirmarEliminar(id, nombre) {
     });
 }
 
-document.getElementById('btnGuardarMaterial').addEventListener('click', function() {
+/* ── Guardar ── */
+document.getElementById('btnGuardarMaterial').addEventListener('click', function () {
     if (!validarFormMaterial()) return;
-    const accion = document.getElementById('mat_action').value;
-    const nombre = document.getElementById('mat_nombre').value.trim();
+
+    const accion   = document.getElementById('mat_action').value;
+    const selNombre = document.getElementById('mat_nombre_sel');
+    const nombre   = selNombre.value === 'Otro'
+        ? document.getElementById('mat_nombre_otro').value.trim()
+        : selNombre.value;
+
     mostrarConfirm({
         tipo: 'info', icono: 'fa-floppy-disk',
         titulo: accion === 'editar' ? 'Guardar cambios' : 'Registrar material',
@@ -442,15 +665,21 @@ document.getElementById('btnGuardarMaterial').addEventListener('click', function
             ? `¿Está seguro de guardar los cambios en "${nombre}"?`
             : `¿Está seguro de registrar "${nombre}" como nuevo material?`,
         txtOk: accion === 'editar' ? 'Sí, guardar' : 'Sí, registrar',
-        onOk: () => { document.getElementById('formMaterial').submit(); }
+        onOk: () => {
+            const form = document.getElementById('formMaterial');
+            form.onsubmit = null;
+            form.submit();
+        }
     });
 });
 
-document.getElementById('btnNuevoMaterial').addEventListener('click', function() {
+/* ── Nuevo Material ── */
+document.getElementById('btnNuevoMaterial').addEventListener('click', function () {
     document.getElementById('matFormTitulo').textContent = 'Nuevo Material';
     document.getElementById('mat_action').value = 'crear';
     document.getElementById('mat_id').value     = '';
     document.getElementById('formMaterial').reset();
+    document.getElementById('wrap_nombre_otro').style.display   = 'none';
     document.getElementById('wrap_categoria_otro').style.display = 'none';
     limpiarErrores();
     mostrarForm();
@@ -459,7 +688,7 @@ document.getElementById('btnNuevoMaterial').addEventListener('click', function()
 function mostrarForm() {
     const card = document.getElementById('matFormCard');
     card.style.display = 'block';
-    card.scrollIntoView({ behavior:'smooth', block:'start' });
+    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function ocultarForm() {
@@ -468,32 +697,48 @@ function ocultarForm() {
 }
 
 function limpiarErrores() {
-    ['mat_nombre','mat_categoria_otro'].forEach(id => {
+    ['mat_nombre_sel','mat_nombre_otro','mat_categoria','mat_categoria_otro',
+     'mat_precio','mat_stock','mat_stock_min'].forEach(id => {
         document.getElementById(id)?.classList.remove('input-error');
     });
-    ['err-mat-nombre','err-mat-categoria'].forEach(id => {
-        document.getElementById(id)?.classList.remove('visible');
+    ['err-mat-nombre-sel','err-mat-nombre','err-mat-categoria-sel','err-mat-categoria',
+     'err-mat-precio','err-mat-stock','err-mat-stock-min'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { el.classList.remove('visible'); }
     });
-    document.getElementById('mat_categoria').style.borderColor = '';
+    /* Restaurar texto original del error de stock mínimo */
+    const errStockMin = document.getElementById('err-mat-stock-min');
+    if (errStockMin) errStockMin.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Ingresa un stock mínimo válido.';
 }
 
+/* ── Editar Material ── */
 function editarMaterial(id, nombre, categoria, unidad, precio, stock, stock_min) {
-    document.getElementById('matFormTitulo').textContent = 'Editar Material';
-    document.getElementById('mat_action').value   = 'editar';
-    document.getElementById('mat_id').value       = id;
-    document.getElementById('mat_nombre').value   = nombre;
-    document.getElementById('mat_unidad').value   = unidad;
-    document.getElementById('mat_precio').value   = precio;
-    document.getElementById('mat_stock').value    = stock;
+    document.getElementById('matFormTitulo').textContent  = 'Editar Material';
+    document.getElementById('mat_action').value  = 'editar';
+    document.getElementById('mat_id').value      = id;
+    document.getElementById('mat_unidad').value  = unidad;
+    document.getElementById('mat_precio').value  = precio;
+    document.getElementById('mat_stock').value   = stock;
     document.getElementById('mat_stock_min').value = stock_min;
 
-    /* Si la categoría es predefinida la selecciona, si no pone Otro y la escribe */
-    const select = document.getElementById('mat_categoria');
-    if (CATEGORIAS_PREDEFINIDAS.includes(categoria)) {
-        select.value = categoria;
-        toggleOtroCategoria(categoria);
+    /* Nombre */
+    const selNombre = document.getElementById('mat_nombre_sel');
+    if (MATERIALES_PREDEFINIDOS.includes(nombre)) {
+        selNombre.value = nombre;
+        toggleOtroNombre(nombre, false); /* false = no limpiar, solo mostrar/ocultar */
     } else {
-        select.value = 'Otro';
+        selNombre.value = 'Otro';
+        toggleOtroNombre('Otro', false);
+        document.getElementById('mat_nombre_otro').value = nombre;
+    }
+
+    /* Categoría */
+    const selCat = document.getElementById('mat_categoria');
+    if (CATEGORIAS_PREDEFINIDAS.includes(categoria)) {
+        selCat.value = categoria;
+        toggleOtroCategoria(categoria);  /* aquí sí puede limpiar, categoria_otro no tiene valor previo */
+    } else {
+        selCat.value = 'Otro';
         toggleOtroCategoria('Otro');
         document.getElementById('mat_categoria_otro').value = categoria;
     }
