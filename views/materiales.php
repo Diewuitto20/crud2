@@ -15,10 +15,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         material_crear(
             $nombre,
             $categoria,
-            trim($_POST['unidad']    ?? 'kg'),
-            (float) ($_POST['precio_kg'] ?? 0),
-            (float) ($_POST['stock']     ?? 0),
-            (float) ($_POST['stock_min'] ?? 0)
+            trim($_POST['unidad']     ?? 'kg'),
+            (float) ($_POST['precio_kg']  ?? 0),
+            (float) ($_POST['stock_max']  ?? 0),
+            (float) ($_POST['stock_min']  ?? 0)
         );
     } elseif ($action === 'editar') {
         $nombre = $_POST['nombre_sel'] === 'Otro'
@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $categoria,
             trim($_POST['unidad']    ?? 'kg'),
             (float) ($_POST['precio_kg'] ?? 0),
-            (float) ($_POST['stock']     ?? 0),
+            (float) ($_POST['stock_max'] ?? 0),
             (float) ($_POST['stock_min'] ?? 0)
         );
     } elseif ($action === 'eliminar') {
@@ -279,7 +279,7 @@ input.input-error, select.input-error {
             <!-- STOCK MÁXIMO -->
             <div class="form-row">
                 <label>Stock máximo</label>
-                <input type="number" name="stock" id="mat_stock"
+                <input type="number" name="stock_max" id="mat_stock"
                        placeholder="0" step="0.1" min="0" required>
                 <span class="field-error" id="err-mat-stock">
                     <i class="fa-solid fa-triangle-exclamation"></i>
@@ -345,7 +345,7 @@ input.input-error, select.input-error {
                 <td><strong><?= htmlspecialchars($m['nombre'], ENT_QUOTES, 'UTF-8') ?></strong></td>
                 <td><?= badge_categoria($m['categoria']) ?></td>
                 <td>$<?= number_format($m['precio_kg'], 2) ?>/kg</td>
-                <td><?= number_format($m['stock'], 0) ?> <?= htmlspecialchars($m['unidad'], ENT_QUOTES, 'UTF-8') ?></td>
+                <td><?= number_format($m['stock_max'], 0) ?> <?= htmlspecialchars($m['unidad'], ENT_QUOTES, 'UTF-8') ?></td>
                 <td><?= number_format($m['stock_min'], 0) ?> <?= htmlspecialchars($m['unidad'], ENT_QUOTES, 'UTF-8') ?></td>
                 <td>
                     <button class="btn-icon" title="Editar"
@@ -355,7 +355,7 @@ input.input-error, select.input-error {
                             '<?= htmlspecialchars($m['categoria'], ENT_QUOTES, 'UTF-8') ?>',
                             '<?= htmlspecialchars($m['unidad'],    ENT_QUOTES, 'UTF-8') ?>',
                             '<?= $m['precio_kg'] ?>',
-                            '<?= $m['stock'] ?>',
+                            '<?= $m['stock_max'] ?>',
                             '<?= $m['stock_min'] ?>'
                         )">
                         <i class="fa-solid fa-pen-to-square" style="color:#2563eb"></i>
@@ -408,7 +408,7 @@ input.input-error, select.input-error {
             Ya existe <strong><?= htmlspecialchars($dup['nombre'], ENT_QUOTES, 'UTF-8') ?></strong>
             en el catálogo.<br><br>
             ¿Deseas actualizar su precio ($<?= number_format($dup['precio_kg'], 2) ?>/kg)
-            y stock (máx: <?= $dup['stock'] ?> kg, mín: <?= $dup['stock_min'] ?> kg)
+            y stock (máx: <?= $dup['stock_max'] ?> kg, mín: <?= $dup['stock_min'] ?> kg)
             con los nuevos valores?
         </div>
         <div class="confirm-btns">
@@ -448,7 +448,6 @@ const NOMBRE_A_CATEGORIA = {
 };
 
 /* ── Toggle: Nombre del material ── */
-/* limpiar=true cuando el usuario cambia el select manualmente */
 function toggleOtroNombre(val, limpiar = true) {
     const wrap  = document.getElementById('wrap_nombre_otro');
     const input = document.getElementById('mat_nombre_otro');
@@ -462,7 +461,6 @@ function toggleOtroNombre(val, limpiar = true) {
         if (limpiar) input.value = '';
     }
 
-    /* Autocompletar categoría solo cuando el usuario elige (limpiar=true) */
     if (limpiar && val && val !== 'Otro' && NOMBRE_A_CATEGORIA[val]) {
         const selCat = document.getElementById('mat_categoria');
         selCat.value = NOMBRE_A_CATEGORIA[val];
@@ -652,9 +650,9 @@ function confirmarEliminar(id, nombre) {
 document.getElementById('btnGuardarMaterial').addEventListener('click', function () {
     if (!validarFormMaterial()) return;
 
-    const accion   = document.getElementById('mat_action').value;
+    const accion    = document.getElementById('mat_action').value;
     const selNombre = document.getElementById('mat_nombre_sel');
-    const nombre   = selNombre.value === 'Otro'
+    const nombre    = selNombre.value === 'Otro'
         ? document.getElementById('mat_nombre_otro').value.trim()
         : selNombre.value;
 
@@ -679,7 +677,7 @@ document.getElementById('btnNuevoMaterial').addEventListener('click', function (
     document.getElementById('mat_action').value = 'crear';
     document.getElementById('mat_id').value     = '';
     document.getElementById('formMaterial').reset();
-    document.getElementById('wrap_nombre_otro').style.display   = 'none';
+    document.getElementById('wrap_nombre_otro').style.display    = 'none';
     document.getElementById('wrap_categoria_otro').style.display = 'none';
     limpiarErrores();
     mostrarForm();
@@ -706,26 +704,25 @@ function limpiarErrores() {
         const el = document.getElementById(id);
         if (el) { el.classList.remove('visible'); }
     });
-    /* Restaurar texto original del error de stock mínimo */
     const errStockMin = document.getElementById('err-mat-stock-min');
     if (errStockMin) errStockMin.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Ingresa un stock mínimo válido.';
 }
 
 /* ── Editar Material ── */
-function editarMaterial(id, nombre, categoria, unidad, precio, stock, stock_min) {
-    document.getElementById('matFormTitulo').textContent  = 'Editar Material';
-    document.getElementById('mat_action').value  = 'editar';
-    document.getElementById('mat_id').value      = id;
-    document.getElementById('mat_unidad').value  = unidad;
-    document.getElementById('mat_precio').value  = precio;
-    document.getElementById('mat_stock').value   = stock;
+function editarMaterial(id, nombre, categoria, unidad, precio, stock_max, stock_min) {
+    document.getElementById('matFormTitulo').textContent   = 'Editar Material';
+    document.getElementById('mat_action').value   = 'editar';
+    document.getElementById('mat_id').value       = id;
+    document.getElementById('mat_unidad').value   = unidad;
+    document.getElementById('mat_precio').value   = precio;
+    document.getElementById('mat_stock').value    = stock_max;
     document.getElementById('mat_stock_min').value = stock_min;
 
     /* Nombre */
     const selNombre = document.getElementById('mat_nombre_sel');
     if (MATERIALES_PREDEFINIDOS.includes(nombre)) {
         selNombre.value = nombre;
-        toggleOtroNombre(nombre, false); /* false = no limpiar, solo mostrar/ocultar */
+        toggleOtroNombre(nombre, false);
     } else {
         selNombre.value = 'Otro';
         toggleOtroNombre('Otro', false);
@@ -736,7 +733,7 @@ function editarMaterial(id, nombre, categoria, unidad, precio, stock, stock_min)
     const selCat = document.getElementById('mat_categoria');
     if (CATEGORIAS_PREDEFINIDAS.includes(categoria)) {
         selCat.value = categoria;
-        toggleOtroCategoria(categoria);  /* aquí sí puede limpiar, categoria_otro no tiene valor previo */
+        toggleOtroCategoria(categoria);
     } else {
         selCat.value = 'Otro';
         toggleOtroCategoria('Otro');

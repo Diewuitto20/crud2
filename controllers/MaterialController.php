@@ -37,9 +37,9 @@ class MaterialController {
                         'id_existente' => $existente['id_material'],
                         'nombre'       => $nombre,
                         'categoria'    => $categoria,
-                        'unidad'       => trim($_POST['unidad'] ?? 'kg'),
+                        'unidad'       => trim($_POST['unidad']    ?? 'kg'),
                         'precio_kg'    => (float)($_POST['precio_kg'] ?? 0),
-                        'stock'        => (float)($_POST['stock']     ?? 0),
+                        'stock_max'    => (float)($_POST['stock_max'] ?? 0),
                         'stock_min'    => (float)($_POST['stock_min'] ?? 0),
                     ];
                     header('Location: index.php?menu=material&opc=tabla&duplicado=1');
@@ -48,9 +48,9 @@ class MaterialController {
 
                 MaterialModel::crear(
                     $nombre, $categoria,
-                    trim($_POST['unidad'] ?? 'kg'),
+                    trim($_POST['unidad']    ?? 'kg'),
                     (float)($_POST['precio_kg'] ?? 0),
-                    (float)($_POST['stock']     ?? 0),
+                    (float)($_POST['stock_max'] ?? 0),
                     (float)($_POST['stock_min'] ?? 0),
                     $_SESSION['id_usuario'] ?? null
                 );
@@ -68,7 +68,7 @@ class MaterialController {
                         $dup['categoria'],
                         $dup['unidad'],
                         $dup['precio_kg'],
-                        $dup['stock'],
+                        $dup['stock_max'],
                         $dup['stock_min']
                     );
                     LogsModel::registrar('materiales', 'editar', 'Material actualizado por duplicado');
@@ -88,9 +88,9 @@ class MaterialController {
                 MaterialModel::editar(
                     trim($_POST['id']     ?? ''),
                     $nombre, $categoria,
-                    trim($_POST['unidad'] ?? 'kg'),
+                    trim($_POST['unidad']    ?? 'kg'),
                     (float)($_POST['precio_kg'] ?? 0),
-                    (float)($_POST['stock']     ?? 0),
+                    (float)($_POST['stock_max'] ?? 0),
                     (float)($_POST['stock_min'] ?? 0)
                 );
                 LogsModel::registrar('materiales', 'editar', 'Material editado');

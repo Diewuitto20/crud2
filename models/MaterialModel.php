@@ -27,18 +27,18 @@ class MaterialModel {
     }
 
     public static function crear(string $nombre, string $categoria, string $unidad,
-                                  float $precio_kg, float $stock, float $stock_min,
+                                  float $precio_kg, float $stock_max, float $stock_min,
                                   ?int $id_usuario = null): void {
         get_db()->prepare(
-            "INSERT INTO materiales (id_material, nombre, categoria, unidad, precio_kg, stock, stock_min, capacidad_maxima, id_usuario)
-             VALUES (:id, :nombre, :categoria, :unidad, :precio_kg, :stock, :stock_min, 0, :uid)"
+            "INSERT INTO materiales (id_material, nombre, categoria, unidad, precio_kg, stock_max, stock_min, id_usuario)
+             VALUES (:id, :nombre, :categoria, :unidad, :precio_kg, :stock_max, :stock_min, :uid)"
         )->execute([
             ':id'        => uniqid(),
             ':nombre'    => $nombre,
             ':categoria' => $categoria,
             ':unidad'    => $unidad,
             ':precio_kg' => $precio_kg,
-            ':stock'     => $stock,
+            ':stock_max' => $stock_max,
             ':stock_min' => $stock_min,
             ':uid'       => $id_usuario,
         ]);
@@ -46,16 +46,16 @@ class MaterialModel {
 
     public static function editar(string $id, string $nombre, string $categoria,
                                    string $unidad, float $precio_kg,
-                                   float $stock, float $stock_min): void {
+                                   float $stock_max, float $stock_min): void {
         get_db()->prepare(
             "UPDATE materiales SET nombre=:nombre, categoria=:categoria, unidad=:unidad,
-             precio_kg=:precio_kg, stock=:stock, stock_min=:stock_min WHERE id_material=:id"
+             precio_kg=:precio_kg, stock_max=:stock_max, stock_min=:stock_min WHERE id_material=:id"
         )->execute([
             ':nombre'    => $nombre,
             ':categoria' => $categoria,
             ':unidad'    => $unidad,
             ':precio_kg' => $precio_kg,
-            ':stock'     => $stock,
+            ':stock_max' => $stock_max,
             ':stock_min' => $stock_min,
             ':id'        => $id,
         ]);
@@ -71,7 +71,7 @@ class MaterialModel {
 
     public static function alertasStock(): array {
         return get_db()
-            ->query("SELECT * FROM materiales WHERE stock <= stock_min ORDER BY nombre ASC")
+            ->query("SELECT * FROM materiales WHERE stock_max <= stock_min ORDER BY nombre ASC")
             ->fetchAll();
     }
 }

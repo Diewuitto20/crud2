@@ -26,26 +26,24 @@ function get_pdo(): PDO {
 /* ══════════════════════════════════════════════════════════════════════
    MATERIALES
    Tabla: materiales
-   Columnas: id_material (varchar PK), nombre, stock, stock_min,
-             capacidad_maxima, precio_kg, id_usuario, categoria, unidad
+   Columnas: id_material (varchar PK), nombre, stock_max, stock_min,
+             precio_kg, id_usuario, categoria, unidad
    ══════════════════════════════════════════════════════════════════════ */
 
 function materiales_leer(): array {
     $pdo  = get_pdo();
     $rows = $pdo->query("SELECT * FROM materiales ORDER BY nombre ASC")->fetchAll();
-    /* Normalizar claves para compatibilidad con el resto del proyecto */
     return array_map(function($r) {
         return [
-            'id'              => $r['id_material'],
-            'id_material'     => $r['id_material'],
-            'nombre'          => $r['nombre'],
-            'categoria'       => $r['categoria'],
-            'unidad'          => $r['unidad'],
-            'precio_kg'       => $r['precio_kg'],
-            'stock'           => $r['stock'],
-            'stock_min'       => $r['stock_min'],
-            'capacidad_maxima'=> $r['capacidad_maxima'],
-            'id_usuario'      => $r['id_usuario'],
+            'id'          => $r['id_material'],
+            'id_material' => $r['id_material'],
+            'nombre'      => $r['nombre'],
+            'categoria'   => $r['categoria'],
+            'unidad'      => $r['unidad'],
+            'precio_kg'   => $r['precio_kg'],
+            'stock_max'   => $r['stock_max'],
+            'stock_min'   => $r['stock_min'],
+            'id_usuario'  => $r['id_usuario'],
         ];
     }, $rows);
 }
@@ -55,63 +53,58 @@ function materiales_guardar(array $materiales): void {
     $pdo = get_pdo();
     $pdo->exec("DELETE FROM materiales");
     $stmt = $pdo->prepare(
-        "INSERT INTO materiales (id_material, nombre, stock, stock_min, capacidad_maxima, precio_kg, id_usuario, categoria, unidad)
-         VALUES (:id, :nombre, :stock, :stock_min, :cap, :precio_kg, :uid, :categoria, :unidad)"
+        "INSERT INTO materiales (id_material, nombre, stock_max, stock_min, precio_kg, id_usuario, categoria, unidad)
+         VALUES (:id, :nombre, :stock_max, :stock_min, :precio_kg, :uid, :categoria, :unidad)"
     );
     foreach ($materiales as $m) {
         $stmt->execute([
-            ':id'       => $m['id_material'] ?? $m['id'] ?? uniqid(),
-            ':nombre'   => $m['nombre'],
-            ':stock'    => $m['stock']           ?? 0,
-            ':stock_min'=> $m['stock_min']        ?? 0,
-            ':cap'      => $m['capacidad_maxima'] ?? 0,
-            ':precio_kg'=> $m['precio_kg']        ?? 0,
-            ':uid'      => $m['id_usuario']       ?? null,
-            ':categoria'=> $m['categoria']        ?? '',
-            ':unidad'   => $m['unidad']           ?? 'kg',
+            ':id'        => $m['id_material'] ?? $m['id'] ?? uniqid(),
+            ':nombre'    => $m['nombre'],
+            ':stock_max' => $m['stock_max'] ?? 0,
+            ':stock_min' => $m['stock_min'] ?? 0,
+            ':precio_kg' => $m['precio_kg'] ?? 0,
+            ':uid'       => $m['id_usuario'] ?? null,
+            ':categoria' => $m['categoria']  ?? '',
+            ':unidad'    => $m['unidad']     ?? 'kg',
         ]);
     }
 }
 
 function material_crear(string $nombre, string $categoria, string $unidad,
-                        float $precio_kg, float $stock, float $stock_min,
-                        float $capacidad_maxima = 0, ?int $id_usuario = null): void {
+                        float $precio_kg, float $stock_max, float $stock_min,
+                        ?int $id_usuario = null): void {
     $pdo = get_pdo();
     $pdo->prepare(
-        "INSERT INTO materiales (id_material, nombre, categoria, unidad, precio_kg, stock, stock_min, capacidad_maxima, id_usuario)
-         VALUES (:id, :nombre, :categoria, :unidad, :precio_kg, :stock, :stock_min, :cap, :uid)"
+        "INSERT INTO materiales (id_material, nombre, categoria, unidad, precio_kg, stock_max, stock_min, id_usuario)
+         VALUES (:id, :nombre, :categoria, :unidad, :precio_kg, :stock_max, :stock_min, :uid)"
     )->execute([
-        ':id'       => uniqid(),
-        ':nombre'   => $nombre,
-        ':categoria'=> $categoria,
-        ':unidad'   => $unidad,
-        ':precio_kg'=> $precio_kg,
-        ':stock'    => $stock,
-        ':stock_min'=> $stock_min,
-        ':cap'      => $capacidad_maxima,
-        ':uid'      => $id_usuario ?? $_SESSION['id_usuario'] ?? null,
+        ':id'        => uniqid(),
+        ':nombre'    => $nombre,
+        ':categoria' => $categoria,
+        ':unidad'    => $unidad,
+        ':precio_kg' => $precio_kg,
+        ':stock_max' => $stock_max,
+        ':stock_min' => $stock_min,
+        ':uid'       => $id_usuario ?? $_SESSION['id_usuario'] ?? null,
     ]);
 }
 
 function material_editar(string $id, string $nombre, string $categoria, string $unidad,
-                         float $precio_kg, float $stock, float $stock_min,
-                         float $capacidad_maxima = 0): void {
+                         float $precio_kg, float $stock_max, float $stock_min): void {
     $pdo = get_pdo();
     $pdo->prepare(
         "UPDATE materiales
          SET nombre=:nombre, categoria=:categoria, unidad=:unidad,
-             precio_kg=:precio_kg, stock=:stock, stock_min=:stock_min,
-             capacidad_maxima=:cap
+             precio_kg=:precio_kg, stock_max=:stock_max, stock_min=:stock_min
          WHERE id_material=:id"
     )->execute([
-        ':nombre'   => $nombre,
-        ':categoria'=> $categoria,
-        ':unidad'   => $unidad,
-        ':precio_kg'=> $precio_kg,
-        ':stock'    => $stock,
-        ':stock_min'=> $stock_min,
-        ':cap'      => $capacidad_maxima,
-        ':id'       => $id,
+        ':nombre'    => $nombre,
+        ':categoria' => $categoria,
+        ':unidad'    => $unidad,
+        ':precio_kg' => $precio_kg,
+        ':stock_max' => $stock_max,
+        ':stock_min' => $stock_min,
+        ':id'        => $id,
     ]);
 }
 
@@ -130,20 +123,20 @@ function compras_leer(): array {
     $rows = $pdo->query("SELECT * FROM gestion_compras ORDER BY fecha DESC")->fetchAll();
     return array_map(function($r) {
         return [
-            'id'             => $r['id_gestion_venta'],
+            'id'              => $r['id_gestion_venta'],
             'id_gestion_venta'=> $r['id_gestion_venta'],
-            'fecha'          => $r['fecha'],
-            'material'       => $r['clasificacion'],   // alias para compatibilidad
-            'clasificacion'  => $r['clasificacion'],
-            'proveedor'      => $r['nombre_empresa'],  // alias
-            'nombre_empresa' => $r['nombre_empresa'],
-            'cantidad'       => $r['kilos'],
-            'kilos'          => $r['kilos'],
-            'precio_kg'      => $r['dinero_recibido'] > 0 && $r['kilos'] > 0
-                                 ? round($r['dinero_recibido'] / $r['kilos'], 2)
-                                 : 0,
-            'dinero_recibido'=> $r['dinero_recibido'],
-            'total'          => $r['dinero_recibido'],
+            'fecha'           => $r['fecha'],
+            'material'        => $r['clasificacion'],
+            'clasificacion'   => $r['clasificacion'],
+            'proveedor'       => $r['nombre_empresa'],
+            'nombre_empresa'  => $r['nombre_empresa'],
+            'cantidad'        => $r['kilos'],
+            'kilos'           => $r['kilos'],
+            'precio_kg'       => $r['dinero_recibido'] > 0 && $r['kilos'] > 0
+                                  ? round($r['dinero_recibido'] / $r['kilos'], 2)
+                                  : 0,
+            'dinero_recibido' => $r['dinero_recibido'],
+            'total'           => $r['dinero_recibido'],
         ];
     }, $rows);
 }
@@ -157,11 +150,11 @@ function compras_guardar(array $compras): void {
     );
     foreach ($compras as $c) {
         $stmt->execute([
-            ':fecha'   => $c['fecha']           ?? date('Y-m-d'),
-            ':kilos'   => $c['kilos']            ?? $c['cantidad'] ?? 0,
-            ':clas'    => $c['clasificacion']    ?? $c['material'] ?? '',
-            ':empresa' => $c['nombre_empresa']   ?? $c['proveedor'] ?? '',
-            ':dinero'  => $c['dinero_recibido']  ?? $c['total'] ?? 0,
+            ':fecha'   => $c['fecha']          ?? date('Y-m-d'),
+            ':kilos'   => $c['kilos']           ?? $c['cantidad'] ?? 0,
+            ':clas'    => $c['clasificacion']   ?? $c['material'] ?? '',
+            ':empresa' => $c['nombre_empresa']  ?? $c['proveedor'] ?? '',
+            ':dinero'  => $c['dinero_recibido'] ?? $c['total'] ?? 0,
         ]);
     }
 }
@@ -198,7 +191,7 @@ function eventos_leer(): array {
         return [
             'id'          => $r['id_evento'],
             'id_evento'   => $r['id_evento'],
-            'titulo'      => $r['descripcion'],   // alias para compatibilidad
+            'titulo'      => $r['descripcion'],
             'descripcion' => $r['descripcion'],
             'fecha'       => $r['fecha'],
             'hora'        => $r['hora'],
@@ -241,9 +234,6 @@ function evento_eliminar(int $id): void {
     get_pdo()->prepare("DELETE FROM agenda WHERE id_evento=:id")->execute([':id' => $id]);
 }
 
-/* ══════════════════════════════════════════════════════════════════════
-   AUDITORÍA
-   ══════════════════════════════════════════════════════════════════════ */
 
 function registrar_auditoria(PDO $pdo, string $modulo, string $accion, string $descripcion = ''): void {
     $pdo->prepare(
