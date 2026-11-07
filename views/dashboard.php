@@ -1,7 +1,5 @@
 <?php
-/* =====================================================
-   DASHBOARD – Recicladora Diaz
-   ===================================================== */
+
 require_once __DIR__ . '/data.php';
 
 $env = require __DIR__ . '/../env.php';
@@ -13,13 +11,13 @@ try {
     );
 
     /* KPI: Stock total */
-    $row = $pdo->query("SELECT COALESCE(SUM(stock),0) as total, COUNT(*) as tipos FROM materiales")->fetch();
+    $row = $pdo->query("SELECT COALESCE(SUM(stock_max),0) as total, COUNT(*) as tipos FROM materiales")->fetch();
     $stock_total_kg = (float)$row['total'];
     $stock_tipos    = (int)$row['tipos'];
 
     /* Alertas stock bajo */
     $alertas = $pdo->query(
-        "SELECT nombre, stock, stock_min FROM materiales WHERE stock < stock_min ORDER BY nombre"
+        "SELECT nombre, stock_max, stock_min FROM materiales WHERE stock_max < stock_min ORDER BY nombre"
     )->fetchAll();
 
     /* Datos para gráfica de usuarios */
@@ -29,10 +27,10 @@ try {
 
     /* Datos para gráfica de materiales */
     $materiales_grafica = $pdo->query(
-        "SELECT nombre, stock, stock_min FROM materiales ORDER BY stock DESC LIMIT 8"
+        "SELECT nombre, stock_max, stock_min FROM materiales ORDER BY stock_max DESC LIMIT 8"
     )->fetchAll();
 
-    /* KPI: Ventas del día — puede fallar si la tabla no existe */
+    /* KPI: Ventas del día */
     try {
         $row = $pdo->query("SELECT COALESCE(SUM(total),0) as monto, COUNT(*) as cnt FROM ventas WHERE DATE(fecha)=CURDATE() AND estado='Activa'")->fetch();
         $ventas_dia   = (float)$row['monto'];
@@ -105,7 +103,6 @@ require_once __DIR__ . '/layout_header.php';
 .alert-stock ul    { list-style:none; display:flex; flex-direction:column; gap:3px; }
 .alert-stock li    { font-size:13px; color:#dc2626; font-weight:500; }
 
-/* Gráficas */
 .two-col-dash { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:20px; }
 @media(max-width:700px){ .two-col-dash{ grid-template-columns:1fr; } }
 
@@ -179,7 +176,7 @@ require_once __DIR__ . '/layout_header.php';
     <div class="alert-stock-title"><i class="fa-solid fa-triangle-exclamation"></i> Alertas de Stock Bajo</div>
     <ul>
         <?php foreach ($alertas as $a): ?>
-        <li><?= e($a['nombre']) ?>: <?= number_format($a['stock']) ?> kg (mínimo: <?= number_format($a['stock_min']) ?> kg)</li>
+        <li><?= e($a['nombre']) ?>: <?= number_format($a['stock_max']) ?> kg (mínimo: <?= number_format($a['stock_min']) ?> kg)</li>
         <?php endforeach; ?>
     </ul>
 </div>
@@ -188,7 +185,6 @@ require_once __DIR__ . '/layout_header.php';
 <!-- Gráficas -->
 <div class="two-col-dash">
 
-    <!-- Gráfica: Usuarios activos vs inactivos (dona) -->
     <div class="dash-panel">
         <div class="dash-panel-title">Usuarios — Activos vs Inactivos</div>
         <div class="chart-wrap">
@@ -196,7 +192,6 @@ require_once __DIR__ . '/layout_header.php';
         </div>
     </div>
 
-    <!-- Gráfica: Stock por material (barras) -->
     <div class="dash-panel">
         <div class="dash-panel-title">Stock por Material (kg)</div>
         <div class="chart-wrap">
@@ -209,14 +204,13 @@ require_once __DIR__ . '/layout_header.php';
 <!-- Ganancia neta -->
 <div class="ganancia-banner">
     <div class="gan-left">
-        <p>Ganancia </p>
+        <p>Ganancia</p>
         <div class="amount">$<?= number_format($ganancia_neta, 2) ?></div>
         <div class="marg">Margen: <?= $margen ?>%</div>
     </div>
     <div class="gan-icon"><i class="fa-solid fa-dollar-sign"></i></div>
 </div>
 
-<!-- Chart.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
 /* ── Gráfica dona: Usuarios ── */
@@ -253,7 +247,7 @@ new Chart(ctxU, {
 
 /* ── Gráfica barras: Materiales ── */
 const materiales = <?= json_encode(array_column($materiales_grafica, 'nombre')) ?>;
-const stocks     = <?= json_encode(array_map(fn($m) => (float)$m['stock'], $materiales_grafica)) ?>;
+const stocks     = <?= json_encode(array_map(fn($m) => (float)$m['stock_max'], $materiales_grafica)) ?>;
 const stocksMins = <?= json_encode(array_map(fn($m) => (float)$m['stock_min'], $materiales_grafica)) ?>;
 
 const colores = stocks.map((s, i) => s < stocksMins[i] ? '#dc2626' : '#16a34a');
@@ -264,7 +258,7 @@ new Chart(ctxM, {
     data: {
         labels: materiales,
         datasets: [{
-            label: 'Stock actual (kg)',
+            label: 'Stock máximo (kg)',
             data: stocks,
             backgroundColor: colores,
             borderRadius: 6,

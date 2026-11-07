@@ -1,7 +1,5 @@
 <?php
-/* =====================================================================
-   controllers/UsuarioController.php
-   ===================================================================== */
+
 require_once dirname(__DIR__) . '/models/UsuarioModel.php';
 require_once dirname(__DIR__) . '/models/LogsModel.php';
 
@@ -50,7 +48,6 @@ class UsuarioController {
             }
         }
 
-        /* Cargar vista */
         include dirname(__DIR__) . '/views/usuarios.php';
     }
 

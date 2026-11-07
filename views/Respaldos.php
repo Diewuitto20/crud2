@@ -71,12 +71,9 @@ if (($_GET['import'] ?? '') === 'ok') {
     $msg_ok = '✓ Base de datos restaurada correctamente desde el respaldo SQL.';
 }
 
-/* ══════════════════════════════════════════════════════════════════════
-   DETECTAR RUTA DE mysqldump (MAMP macOS + fallbacks)
-   ══════════════════════════════════════════════════════════════════════ */
 function detectar_mysqldump(): string {
     $rutas = [
-        '/Applications/MAMP/Library/bin/mysql80/bin/mysqldump',  // MAMP macOS mysql80 ← tu ruta
+        '/Applications/MAMP/Library/bin/mysql80/bin/mysqldump',  // MAMP macOS mysql80 
         '/Applications/MAMP/Library/bin/mysql57/bin/mysqldump',  // MAMP macOS mysql57
         '/Applications/MAMP/Library/bin/mysqldump',              // MAMP macOS (antiguo)
         '/Applications/MAMP PRO/Library/bin/mysqldump',          // MAMP PRO macOS
@@ -97,7 +94,7 @@ function detectar_mysqldump(): string {
 
 function detectar_mysql(): string {
     $rutas = [
-        '/Applications/MAMP/Library/bin/mysql80/bin/mysql',  // MAMP macOS mysql80 ← tu ruta
+        '/Applications/MAMP/Library/bin/mysql80/bin/mysql',  // MAMP macOS mysql80
         '/Applications/MAMP/Library/bin/mysql57/bin/mysql',  // MAMP macOS mysql57
         '/Applications/MAMP/Library/bin/mysql',              // MAMP macOS (antiguo)
         '/Applications/MAMP PRO/Library/bin/mysql',          // MAMP PRO macOS

@@ -1,7 +1,5 @@
 <?php
-/* =====================================================================
-   controllers/DashboardController.php
-   ===================================================================== */
+
 require_once dirname(__DIR__) . '/models/MaterialModel.php';
 require_once dirname(__DIR__) . '/models/CompraModel.php';
 require_once dirname(__DIR__) . '/models/AgendaModel.php';
@@ -10,7 +8,7 @@ require_once dirname(__DIR__) . '/models/UsuarioModel.php';
 class DashboardController {
 
     public static function manejar(): void {
-        /* Prepara datos para la vista del dashboard */
+       
         $datos = [
             'total_materiales' => MaterialModel::total(),
             'total_compras'    => CompraModel::total(),

@@ -1,7 +1,5 @@
 <?php
-/* =====================================================================
-   controllers/RespaldoController.php
-   ===================================================================== */
+
 require_once dirname(__DIR__) . '/models/RespaldoModel.php';
 require_once dirname(__DIR__) . '/models/LogsModel.php';
 
@@ -20,9 +18,6 @@ class RespaldoController {
                 exit;
             }
         }
-
-        /* Las acciones de exportar/importar SQL las maneja Respaldos.php directamente
-           porque requieren enviar archivos binarios (ZIP/PDF) */
         include dirname(__DIR__) . '/views/Respaldos.php';
     }
 }

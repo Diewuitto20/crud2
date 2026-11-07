@@ -124,11 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-/**
- * Devuelve el valor de $_POST[$key] solo si el action del POST coincide
- * con $action_required. Así evitamos que datos de login contaminen el
- * formulario de registro y viceversa.
- */
+
 function old(string $key, string $action_required = '', string $default = ''): string {
     if ($action_required !== '' && ($_POST['action'] ?? '') !== $action_required) {
         return $default;

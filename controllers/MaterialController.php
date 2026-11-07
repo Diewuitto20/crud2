@@ -1,7 +1,4 @@
 <?php
-/* =====================================================================
-   controllers/MaterialController.php
-   ===================================================================== */
 require_once dirname(__DIR__) . '/models/MaterialModel.php';
 require_once dirname(__DIR__) . '/models/LogsModel.php';
 
@@ -12,27 +9,26 @@ class MaterialController {
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-            /* ── Resolver nombre desde el select desplegable ── */
+          
             $nombre = isset($_POST['nombre_sel'])
                 ? (trim($_POST['nombre_sel']) === 'Otro'
                     ? trim($_POST['nombre_otro'] ?? '')
                     : trim($_POST['nombre_sel']))
                 : trim($_POST['nombre'] ?? '');
 
-            /* ── Resolver categoría (con opción "Otro") ── */
             $categoria = isset($_POST['categoria'])
                 ? (trim($_POST['categoria']) === 'Otro'
                     ? trim($_POST['categoria_otro'] ?? '')
                     : trim($_POST['categoria']))
                 : '';
 
-            /* ── CREAR ── */
+           
             if ($accion === 'crear') {
-                /* Verificar si ya existe un material con el mismo nombre */
+           
                 $existente = MaterialModel::buscarPorNombre($nombre);
 
                 if ($existente) {
-                    /* Guardar datos en sesión y redirigir con flag de duplicado */
+                   
                     $_SESSION['duplicado'] = [
                         'id_existente' => $existente['id_material'],
                         'nombre'       => $nombre,
@@ -58,7 +54,6 @@ class MaterialController {
                 self::redirigir();
             }
 
-            /* ── ACTUALIZAR EXISTENTE (confirmó duplicado) ── */
             if ($accion === 'actualizar_existente') {
                 $dup = $_SESSION['duplicado'] ?? null;
                 if ($dup) {
@@ -77,13 +72,12 @@ class MaterialController {
                 self::redirigir();
             }
 
-            /* ── CANCELAR DUPLICADO ── */
+
             if ($accion === 'cancelar_duplicado') {
                 unset($_SESSION['duplicado']);
                 self::redirigir();
             }
 
-            /* ── EDITAR ── */
             if ($accion === 'editar') {
                 MaterialModel::editar(
                     trim($_POST['id']     ?? ''),
@@ -97,7 +91,6 @@ class MaterialController {
                 self::redirigir();
             }
 
-            /* ── ELIMINAR ── */
             if ($accion === 'eliminar') {
                 MaterialModel::eliminar(trim($_POST['id'] ?? ''));
                 LogsModel::registrar('materiales', 'eliminar', 'Material eliminado');

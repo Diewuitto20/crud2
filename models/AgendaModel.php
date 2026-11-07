@@ -1,7 +1,5 @@
 <?php
-/* =====================================================================
-   models/AgendaModel.php  –  Queries de la tabla agenda (eventos)
-   ===================================================================== */
+
 require_once dirname(__DIR__) . '/config/database.php';
 
 class AgendaModel {

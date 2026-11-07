@@ -1,7 +1,5 @@
 <?php
-/* =====================================================================
-   models/CompraModel.php  –  Queries de gestion_compras
-   ===================================================================== */
+
 require_once dirname(__DIR__) . '/config/database.php';
 
 class CompraModel {

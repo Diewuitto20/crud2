@@ -1,7 +1,5 @@
 <?php
-/* =====================================================================
-   models/MaterialModel.php  –  Queries de la tabla materiales
-   ===================================================================== */
+
 require_once dirname(__DIR__) . '/config/database.php';
 
 class MaterialModel {

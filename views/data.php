@@ -1,8 +1,5 @@
 <?php
-/* =====================================================================
-   data.php  –  Helpers globales usando MySQL (PDO) en lugar de JSON
-   Tablas: materiales, gestion_compras, agenda
-   ===================================================================== */
+
 
 function e(string $s): string {
     return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
@@ -23,12 +20,6 @@ function get_pdo(): PDO {
     return $pdo;
 }
 
-/* ══════════════════════════════════════════════════════════════════════
-   MATERIALES
-   Tabla: materiales
-   Columnas: id_material (varchar PK), nombre, stock_max, stock_min,
-             precio_kg, id_usuario, categoria, unidad
-   ══════════════════════════════════════════════════════════════════════ */
 
 function materiales_leer(): array {
     $pdo  = get_pdo();
@@ -112,11 +103,7 @@ function material_eliminar(string $id): void {
     get_pdo()->prepare("DELETE FROM materiales WHERE id_material=:id")->execute([':id' => $id]);
 }
 
-/* ══════════════════════════════════════════════════════════════════════
-   COMPRAS  (gestion_compras)
-   Columnas: id_gestion_venta (AI PK), fecha, kilos, clasificacion,
-             nombre_empresa, dinero_recibido
-   ══════════════════════════════════════════════════════════════════════ */
+
 
 function compras_leer(): array {
     $pdo  = get_pdo();
@@ -179,10 +166,7 @@ function compra_eliminar(int $id): void {
     get_pdo()->prepare("DELETE FROM gestion_compras WHERE id_gestion_venta=:id")->execute([':id' => $id]);
 }
 
-/* ══════════════════════════════════════════════════════════════════════
-   EVENTOS  (agenda)
-   Columnas: id_evento (AI PK), fecha, descripcion, hora, id_usuario
-   ══════════════════════════════════════════════════════════════════════ */
+
 
 function eventos_leer(): array {
     $pdo  = get_pdo();

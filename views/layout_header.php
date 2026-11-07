@@ -261,7 +261,7 @@
                 </div>
                 <span><?= e($_SESSION['nombre'] ?? 'Admin') ?></span>
             </div>
-            <a href="index.php?menu=login" class="logout-btn">
+            <a href="index.php?menu=logout" class="logout-btn">
                 <i class="fa-solid fa-right-from-bracket"></i> Cerrar sesión
             </a>
         </div>

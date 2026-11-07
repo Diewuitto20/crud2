@@ -1,7 +1,5 @@
 <?php
-/* =====================================================================
-   models/RespaldoModel.php  –  Queries de la tabla respaldos
-   ===================================================================== */
+
 require_once dirname(__DIR__) . '/config/database.php';
 
 class RespaldoModel {

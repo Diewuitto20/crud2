@@ -1,7 +1,5 @@
 <?php
-/* =====================================================================
-   controllers/CalendarioController.php
-   ===================================================================== */
+
 require_once dirname(__DIR__) . '/models/AgendaModel.php';
 require_once dirname(__DIR__) . '/models/LogsModel.php';
 

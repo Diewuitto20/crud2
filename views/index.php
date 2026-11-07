@@ -1,13 +1,25 @@
 <?php
-/* =====================================================================
-   views/index.php  –  Router principal (MVC)
-   ===================================================================== */
+
 error_reporting(E_ALL & ~E_DEPRECATED);
 ini_set('display_errors', 1); // temporal para ver errores
 session_start();
 
 $menu = $_GET['menu'] ?? 'login';
 $opc  = $_GET['opc']  ?? 'tabla';
+
+/* Cerrar sesión */
+if ($menu === 'logout') {
+    session_unset();
+    session_destroy();
+    header('Location: index.php?menu=login');
+    exit;
+}
+
+/* Bloquear acceso sin sesión iniciada */
+if ($menu !== 'login' && empty($_SESSION['autenticado'])) {
+    header('Location: index.php?menu=login');
+    exit;
+}
 
 /* Raíz del proyecto (un nivel arriba de views/) */
 $root = dirname(__DIR__);

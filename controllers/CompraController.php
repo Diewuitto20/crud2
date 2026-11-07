@@ -1,7 +1,5 @@
 <?php
-/* =====================================================================
-   controllers/CompraController.php
-   ===================================================================== */
+
 require_once dirname(__DIR__) . '/models/CompraModel.php';
 require_once dirname(__DIR__) . '/models/LogsModel.php';
 
