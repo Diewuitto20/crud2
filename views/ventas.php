@@ -11,38 +11,85 @@ $pdo = new PDO(
 
 $action = $_POST['action'] ?? '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'crear_venta') {
-    $id_ventas     = trim($_POST['id_ventas']    ?? '');
-    $fecha         = trim($_POST['fecha']         ?? '');
-    $clasificacion = trim($_POST['clasificacion'] ?? '');
-    $id_usuario    = intval($_POST['id_usuario']  ?? 0);
-    $precios       = $_POST['precios']            ?? [];
-    $cantidades    = $_POST['cantidades']         ?? [];
+/* ── Estructura de Detalle_ventas (material es opcional) ── */
+function columnasDetalle(PDO $pdo): array {
+    $c = [];
+    foreach ($pdo->query("SHOW COLUMNS FROM Detalle_ventas")->fetchAll(PDO::FETCH_ASSOC) as $r) $c[$r['Field']] = $r['Type'];
+    return $c;
+}
+$colsDet = columnasDetalle($pdo);
+if (!isset($colsDet['material']) || !preg_match('/decimal|float|double/i', $colsDet['cantidad'] ?? '')) {
+    try {
+        if (!isset($colsDet['material'])) $pdo->exec("ALTER TABLE Detalle_ventas ADD COLUMN material VARCHAR(100) NULL AFTER id_ventas");
+        if (!preg_match('/decimal|float|double/i', $colsDet['cantidad'] ?? '')) $pdo->exec("ALTER TABLE Detalle_ventas MODIFY cantidad DECIMAL(10,2) NOT NULL");
+    } catch (PDOException $e) { /* sin permisos ALTER: se usa la estructura actual */ }
+    $colsDet = columnasDetalle($pdo);
+}
+$detTieneMaterial = isset($colsDet['material']);
+$cantEntera = !preg_match('/decimal|float|double/i', $colsDet['cantidad'] ?? '');
+$existencias = existencias_leer();
 
-    $total = 0; $items = [];
-    for ($i = 0; $i < count($precios); $i++) {
-        $p = floatval($precios[$i]); $c = intval($cantidades[$i]);
-        if ($p > 0 && $c > 0) { $items[] = ['precio'=>$p,'cantidad'=>$c]; $total += $p*$c; }
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'crear_venta') {
+    $fecha      = trim($_POST['fecha'] ?? '');
+    $id_usuario = intval($_POST['id_usuario'] ?? 0);
+    $idsMat     = $_POST['materiales'] ?? [];
+    $precios    = $_POST['precios']    ?? [];
+    $cantidades = $_POST['cantidades'] ?? [];
+
+    $catalogo = [];
+    foreach (materiales_leer() as $m) $catalogo[$m['id_material']] = $m;
+
+    $total = 0; $items = []; $cats = [];
+    foreach ($idsMat as $i => $idm) {
+        $p = floatval($precios[$i] ?? 0);
+        $c = floatval($cantidades[$i] ?? 0);
+        if ($cantEntera) $c = round($c);
+        if (!isset($catalogo[$idm]) || $p <= 0 || $c <= 0) continue;
+        $items[] = ['id' => $idm, 'material' => $catalogo[$idm]['nombre'], 'precio' => $p, 'cantidad' => $c];
+        $cats[$catalogo[$idm]['categoria']] = true;
+        $total += $p * $c;
+    }
+    $clasificacion = count($cats) === 1 ? (string)array_key_first($cats) : 'Mixto';
+
+    $faltante = '';
+    if (count($items) > 0) {
+        $pedido = [];
+        foreach ($items as $it) $pedido[$it['id']] = ($pedido[$it['id']] ?? 0) + $it['cantidad'];
+        foreach ($pedido as $idm => $kg) {
+            $disp = $existencias[$idm]['existencia'] ?? 0;
+            if ($kg > $disp + 0.0001) { $faltante = "Existencia insuficiente de {$existencias[$idm]['nombre']}: disponible " . number_format(max(0, $disp), 2) . " kg."; break; }
+        }
     }
 
     $msg_ok = $msg_err = '';
-    if ($id_ventas && $fecha && $id_usuario > 0 && count($items) > 0) {
+    if ($faltante) {
+        $msg_err = $faltante;
+    } elseif ($fecha && $id_usuario > 0 && count($items) > 0) {
         try {
             $pdo->beginTransaction();
+            $ult = (int)$pdo->query("SELECT COALESCE(MAX(CAST(SUBSTRING(id_ventas,5) AS UNSIGNED)),0) FROM ventas WHERE id_ventas REGEXP '^VTA-[0-9]+$'")->fetchColumn();
+            $id_ventas = sprintf('VTA-%03d', $ult + 1);
             $pdo->prepare("INSERT INTO ventas (id_ventas,fecha,total,id_usuario,clasificacion,estado) VALUES (?,?,?,?,?,'Activa')")
                 ->execute([$id_ventas,$fecha,$total,$id_usuario,$clasificacion]);
-            $stmtD = $pdo->prepare("INSERT INTO Detalle_ventas (precio,cantidad,id_ventas) VALUES (?,?,?)");
-            foreach ($items as $item) $stmtD->execute([$item['precio'],$item['cantidad'],$id_ventas]);
+            if ($detTieneMaterial) {
+                $stmtD = $pdo->prepare("INSERT INTO Detalle_ventas (material,precio,cantidad,id_ventas) VALUES (?,?,?,?)");
+                foreach ($items as $it) $stmtD->execute([$it['material'],$it['precio'],$it['cantidad'],$id_ventas]);
+            } else {
+                $stmtD = $pdo->prepare("INSERT INTO Detalle_ventas (precio,cantidad,id_ventas) VALUES (?,?,?)");
+                foreach ($items as $it) $stmtD->execute([$it['precio'],$it['cantidad'],$id_ventas]);
+            }
             $pdo->commit();
             $msg_ok = "Venta {$id_ventas} registrada correctamente.";
+            auditar('ventas', 'crear', "{$id_ventas} por $" . number_format($total, 2));
         } catch (PDOException $e) { $pdo->rollBack(); $msg_err = "Error: ".$e->getMessage(); }
-    } else { $msg_err = "Completa todos los campos y agrega al menos un artículo válido."; }
+    } else { $msg_err = "Elige un usuario y agrega al menos un material con precio y kilos."; }
     header("Location: index.php?menu=ventas&msg=".urlencode($msg_ok)."&err=".urlencode($msg_err)); exit;
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'cancelar_venta') {
     $id = trim($_POST['id_ventas'] ?? '');
-    if ($id) $pdo->prepare("UPDATE ventas SET estado='Cancelada' WHERE id_ventas=?")->execute([$id]);
+    if ($id) { $pdo->prepare("UPDATE ventas SET estado='Cancelada' WHERE id_ventas=?")->execute([$id]); auditar('ventas', 'cancelar', $id);
+        try { $pdo->prepare("UPDATE comprobantes SET estado='Cancelada' WHERE tipo_origen='Venta' AND id_origen=? AND estado='Emitida'")->execute([$id]); } catch (PDOException $e) {} }
     header("Location: index.php?menu=ventas&msg=".urlencode("Venta {$id} cancelada.")."&err="); exit;
 }
 
@@ -58,6 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'eliminar_venta') {
             $pdo->prepare("DELETE FROM ventas WHERE id_ventas=? AND estado='Cancelada'")->execute([$id]);
             $pdo->commit();
             $msg_ok = "Venta {$id} eliminada permanentemente.";
+            auditar('ventas', 'eliminar', $id);
         } catch (PDOException $e) {
             $pdo->rollBack();
             $msg_err = "Error al eliminar: " . $e->getMessage();
@@ -80,13 +128,14 @@ $activas      = count(array_filter($ventas, fn($v) => $v['estado']==='Activa'));
 $canceladas   = count(array_filter($ventas, fn($v) => $v['estado']==='Cancelada'));
 $ingresos     = array_sum(array_column(array_filter($ventas, fn($v) => $v['estado']==='Activa'), 'total'));
 $usuarios     = $pdo->query("SELECT id_usuario,nombre,apellido_paterno FROM usuarios ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
+$materiales_venta = materiales_leer();
 
 $ver_id = $_GET['ver'] ?? '';
 $ver_venta = null; $ver_detalle = [];
 if ($ver_id) {
     $s = $pdo->prepare("SELECT v.*,CONCAT(u.nombre,' ',u.apellido_paterno) AS nombre_usuario FROM ventas v LEFT JOIN usuarios u ON u.id_usuario=v.id_usuario WHERE v.id_ventas=?");
     $s->execute([$ver_id]); $ver_venta = $s->fetch(PDO::FETCH_ASSOC);
-    $s2 = $pdo->prepare("SELECT precio,cantidad,(precio*cantidad) AS subtotal FROM Detalle_ventas WHERE id_ventas=?");
+    $s2 = $pdo->prepare("SELECT ".($detTieneMaterial ? "material," : "")."precio,cantidad,(precio*cantidad) AS subtotal FROM Detalle_ventas WHERE id_ventas=?");
     $s2->execute([$ver_id]); $ver_detalle = $s2->fetchAll(PDO::FETCH_ASSOC);
 }
 
@@ -137,6 +186,7 @@ $pagina_activa = 'ventas';
                 <td>
                     <a href="index.php?menu=ventas&ver=<?= urlencode($v['id_ventas']) ?>" class="btn-icon" title="Ver detalle"><i class="fa-solid fa-eye"></i></a>
                     <?php if ($v['estado']==='Activa'): ?>
+                        <a href="index.php?menu=tickets&opc=tabla&nuevo=<?= urlencode($v['id_ventas']) ?>" class="btn-icon" title="Generar comprobante"><i class="fa-solid fa-file-invoice"></i></a>
                         <button class="btn-icon danger" title="Cancelar venta" onclick="confirmarCancelar('<?= e($v['id_ventas']) ?>')">
                             <i class="fa-solid fa-ban"></i>
                         </button>
@@ -164,18 +214,7 @@ $pagina_activa = 'ventas';
             <input type="hidden" name="action" value="crear_venta">
             <div class="modal-body">
                 <div style="display:flex;gap:14px">
-                    <div class="form-row" style="flex:1"><label>ID de venta *</label><input type="text" name="id_ventas" placeholder="Ej: VTA-001" required></div>
                     <div class="form-row" style="flex:1"><label>Fecha *</label><input type="date" name="fecha" value="<?= date('Y-m-d') ?>" required></div>
-                </div>
-                <div style="display:flex;gap:14px">
-                    <div class="form-row" style="flex:1">
-                        <label>Clasificación</label>
-                        <select name="clasificacion">
-                            <option value="">-- Seleccionar --</option>
-                            <option>Plástico</option><option>Metal</option><option>Papel</option>
-                            <option>Vidrio</option><option>Electrónico</option><option>Mixto</option>
-                        </select>
-                    </div>
                     <div class="form-row" style="flex:1">
                         <label>Usuario *</label>
                         <select name="id_usuario" required>
@@ -187,17 +226,30 @@ $pagina_activa = 'ventas';
                     </div>
                 </div>
                 <div>
-                    <label style="font-size:13px;color:var(--text-gray);font-weight:500;display:block;margin-bottom:8px">Artículos *</label>
-                    <div id="itemsContainer">
-                        <div class="item-row" style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
-                            <input type="number" name="precios[]" placeholder="Precio $" min="0.01" step="0.01" style="flex:1;border:1.5px solid var(--border);border-radius:10px;padding:10px 14px;font-size:14px;outline:none" oninput="calcTotal()" required>
-                            <input type="number" name="cantidades[]" placeholder="Cantidad" min="1" style="flex:1;border:1.5px solid var(--border);border-radius:10px;padding:10px 14px;font-size:14px;outline:none" oninput="calcTotal()" required>
+                    <label style="font-size:13px;color:var(--text-gray);font-weight:500;display:block;margin-bottom:8px">Materiales vendidos *</label>
+                    <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 36px;gap:10px;font-size:11.5px;color:var(--text-gray);font-weight:600;margin-bottom:4px">
+                        <span>Material</span><span>Precio por kg</span><span>Kilos</span><span>Subtotal</span><span></span>
+                    </div>
+                    <div id="itemsContainer"></div>
+                    <template id="tplItem">
+                        <div class="item-row" style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 36px;gap:10px;align-items:center;margin-bottom:8px">
+                            <select name="materiales[]" onchange="selMat(this)" required style="border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;font-size:14px;outline:none;width:100%;box-sizing:border-box;background:#fff">
+                                <option value="">-- Elegir --</option>
+                                <?php foreach ($materiales_venta as $m): ?>
+                                <?php $disp = $existencias[$m['id_material']]['existencia'] ?? 0; ?>
+                                <option value="<?= e($m['id_material']) ?>" data-precio="<?= (float)$m['precio_kg'] ?>" data-stock="<?= round($disp, 2) ?>"<?= $disp <= 0 ? ' disabled' : '' ?>><?= e($m['nombre']) ?> — <?= number_format(max(0, $disp), 2) ?> kg disp.</option>
+                                <?php endforeach; ?>
+                            </select>
+                            <input type="number" name="precios[]" placeholder="$ / kg" min="0.01" step="0.01" style="border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;font-size:14px;outline:none;width:100%;box-sizing:border-box;background:#fff" oninput="calcTotal()" required>
+                            <input type="number" name="cantidades[]" placeholder="kg" min="0.01" step="0.01" style="border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;font-size:14px;outline:none;width:100%;box-sizing:border-box;background:#fff" oninput="calcTotal()" required>
+                            <div class="item-sub" style="font-weight:600;color:var(--green-dark);font-size:14px">$0.00</div>
                             <button type="button" class="btn-icon danger" onclick="removeItem(this)"><i class="fa-solid fa-trash-can"></i></button>
                         </div>
-                    </div>
+                    </template>
                     <button type="button" onclick="addItem()" style="width:100%;background:var(--green-light);border:1.5px dashed var(--green-mid);color:var(--green-dark);border-radius:10px;padding:9px;font-size:13px;font-weight:500;cursor:pointer;margin-top:2px">
-                        <i class="fa-solid fa-plus"></i> Agregar artículo
+                        <i class="fa-solid fa-plus"></i> Agregar otro material
                     </button>
+                    <div style="font-size:11.5px;color:var(--text-gray);margin-top:8px">El folio de la venta y su clasificación se asignan automáticamente.<?php if (!$detTieneMaterial): ?> <strong style="color:#dc2626">No se pudo preparar Detalle_ventas (permiso ALTER); ejecute migracion_detalle_ventas.sql.</strong><?php endif; ?></div>
                 </div>
                 <div style="background:var(--green-light);border-radius:10px;padding:14px 18px;border:1px solid #86efac">
                     <div style="font-size:12px;color:var(--green-dark);font-weight:500;margin-bottom:4px">Total calculado</div>
@@ -231,15 +283,15 @@ $pagina_activa = 'ventas';
                 </div>
             </div>
             <table class="data-table" style="border:1px solid var(--border);border-radius:10px;overflow:hidden">
-                <thead><tr><th>#</th><th>Precio</th><th>Cantidad</th><th>Subtotal</th></tr></thead>
+                <thead><tr><th>#</th><?php if ($detTieneMaterial): ?><th>Material</th><?php endif; ?><th>Precio/kg</th><th>Kg</th><th>Subtotal</th></tr></thead>
                 <tbody>
                 <?php foreach ($ver_detalle as $i => $d): ?>
-                <tr><td><?= $i+1 ?></td><td>$<?= number_format($d['precio'],2) ?></td><td><?= $d['cantidad'] ?></td><td>$<?= number_format($d['subtotal'],2) ?></td></tr>
+                <tr><td><?= $i+1 ?></td><?php if ($detTieneMaterial): ?><td><?= e($d['material'] ?? '—') ?></td><?php endif; ?><td>$<?= number_format($d['precio'],2) ?></td><td><?= $d['cantidad'] ?></td><td>$<?= number_format($d['subtotal'],2) ?></td></tr>
                 <?php endforeach; ?>
                 </tbody>
                 <tfoot>
                     <tr style="background:var(--green-light)">
-                        <td colspan="3" style="text-align:right;font-weight:700;padding:12px 16px;color:var(--green-dark)">TOTAL</td>
+                        <td colspan="<?= $detTieneMaterial ? 4 : 3 ?>" style="text-align:right;font-weight:700;padding:12px 16px;color:var(--green-dark)">TOTAL</td>
                         <td style="font-weight:700;color:var(--green-dark);padding:12px 16px">$<?= number_format($ver_venta['total'],2) ?></td>
                     </tr>
                 </tfoot>
@@ -313,19 +365,30 @@ function confirmarEliminar(id) {
 }
 
 function addItem() {
-    document.getElementById('itemsContainer').insertAdjacentHTML('beforeend', `
-        <div class="item-row" style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
-            <input type="number" name="precios[]" placeholder="Precio $" min="0.01" step="0.01" style="flex:1;border:1.5px solid var(--border);border-radius:10px;padding:10px 14px;font-size:14px;outline:none" oninput="calcTotal()">
-            <input type="number" name="cantidades[]" placeholder="Cantidad" min="1" style="flex:1;border:1.5px solid var(--border);border-radius:10px;padding:10px 14px;font-size:14px;outline:none" oninput="calcTotal()">
-            <button type="button" class="btn-icon danger" onclick="removeItem(this)"><i class="fa-solid fa-trash-can"></i></button>
-        </div>`);
+    document.getElementById('itemsContainer').appendChild(document.getElementById('tplItem').content.cloneNode(true));
 }
-function removeItem(btn) { if (document.querySelectorAll('.item-row').length===1) return; btn.closest('.item-row').remove(); calcTotal(); }
+function selMat(sel) {
+    const row = sel.closest('.item-row');
+    const precio = sel.selectedOptions[0]?.dataset.precio;
+    if (precio) row.querySelector('[name="precios[]"]').value = precio;
+    const stock = sel.selectedOptions[0]?.dataset.stock, kg = row.querySelector('[name="cantidades[]"]');
+    if (stock !== undefined) { kg.max = stock; kg.placeholder = 'máx ' + stock; } else { kg.removeAttribute('max'); kg.placeholder = 'kg'; }
+    calcTotal();
+}
+function removeItem(btn) {
+    if (document.querySelectorAll('.item-row').length === 1) return;
+    btn.closest('.item-row').remove(); calcTotal();
+}
 function calcTotal() {
-    const p=document.querySelectorAll('[name="precios[]"]'), c=document.querySelectorAll('[name="cantidades[]"]');
-    let t=0; p.forEach((x,i)=>t+=(parseFloat(x.value)||0)*(parseInt(c[i]?.value)||0));
-    document.getElementById('totalDisplay').textContent='$'+t.toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});
+    let t = 0;
+    document.querySelectorAll('.item-row').forEach(r => {
+        const sub = (parseFloat(r.querySelector('[name="precios[]"]').value) || 0) * (parseFloat(r.querySelector('[name="cantidades[]"]').value) || 0);
+        r.querySelector('.item-sub').textContent = '$' + sub.toLocaleString('es-MX', {minimumFractionDigits:2, maximumFractionDigits:2});
+        t += sub;
+    });
+    document.getElementById('totalDisplay').textContent = '$' + t.toLocaleString('es-MX', {minimumFractionDigits:2, maximumFractionDigits:2});
 }
+addItem();
 </script>
 
 <?php include __DIR__ . '/layout_footer.php'; ?>

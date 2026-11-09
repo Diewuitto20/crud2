@@ -1,5 +1,8 @@
 <?php
 require_once __DIR__ . '/data.php';
+exigir_dueno();
+$yo = (int)($_SESSION['id_usuario'] ?? 0);
+$msg = '';
 
 /* ── Conexión ── */
 $env = require __DIR__ . '/../env.php';
@@ -42,7 +45,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $pdo->prepare("INSERT INTO usuarios (nombre, apellido_paterno, apellido_materno, correo, contrasena, activo)
                                VALUES (:nombre, :ap, :am, :correo, :pass, 1)");
         $stmt->execute([':nombre' => $nombre, ':ap' => $ap, ':am' => $am, ':correo' => $correo,
-                        ':pass' => $pass]);
+                        ':pass' => hash_clave($pass)]);
+        auditar('usuarios', 'crear', "Usuario creado: $correo (empleado)");
 
     } elseif ($action === 'editar') {
         $id     = (int) ($_POST['id']        ?? 0);
@@ -65,31 +69,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->prepare("UPDATE usuarios SET nombre=:nombre, apellido_paterno=:ap,
                            apellido_materno=:am, correo=:correo, contrasena=:pass WHERE id_usuario=:id")
                 ->execute([':nombre'=>$nombre,':ap'=>$ap,':am'=>$am,':correo'=>$correo,
-                           ':pass'=>$pass,':id'=>$id]);
+                           ':pass'=>hash_clave($pass),':id'=>$id]);
         } else {
             $pdo->prepare("UPDATE usuarios SET nombre=:nombre, apellido_paterno=:ap,
                            apellido_materno=:am, correo=:correo WHERE id_usuario=:id")
                 ->execute([':nombre'=>$nombre,':ap'=>$ap,':am'=>$am,':correo'=>$correo,':id'=>$id]);
         }
 
-    } elseif ($action === 'toggle_activo') {
-        $id     = (int) ($_POST['id']     ?? 0);
-        $activo = (int) ($_POST['activo'] ?? 1);
-        $nuevo  = $activo ? 0 : 1;
-        $pdo->prepare("UPDATE usuarios SET activo=:activo WHERE id_usuario=:id")
-            ->execute([':activo' => $nuevo, ':id' => $id]);
+        auditar('usuarios', 'editar', "Usuario editado: $correo");
 
-    } elseif ($action === 'eliminar') {
-        $id = (int) ($_POST['id'] ?? 0);
-        $pdo->prepare("DELETE FROM usuarios WHERE id_usuario=:id")->execute([':id' => $id]);
+    } elseif ($action === 'toggle_activo' || $action === 'eliminar') {
+        $id  = (int) ($_POST['id'] ?? 0);
+        $t = $pdo->prepare("SELECT correo, rol, activo FROM usuarios WHERE id_usuario = ?");
+        $t->execute([$id]);
+        $obj = $t->fetch();
+        if (!$obj)                          $msg = 'El usuario no existe.';
+        elseif ($id === $yo)                $msg = 'No puede desactivar ni eliminar su propia cuenta.';
+        elseif ($obj['rol'] === 'dueno')    $msg = 'La cuenta del dueño no se puede desactivar ni eliminar.';
+        elseif ($action === 'toggle_activo') {
+            $nuevo = $obj['activo'] ? 0 : 1;
+            $pdo->prepare("UPDATE usuarios SET activo=:a WHERE id_usuario=:id")->execute([':a' => $nuevo, ':id' => $id]);
+            auditar('usuarios', $nuevo ? 'activar' : 'desactivar', ($nuevo ? 'Usuario activado: ' : 'Usuario desactivado: ') . $obj['correo']);
+        } else {
+            try {
+                $pdo->prepare("DELETE FROM usuarios WHERE id_usuario=:id")->execute([':id' => $id]);
+                auditar('usuarios', 'eliminar', 'Usuario eliminado: ' . $obj['correo']);
+            } catch (PDOException $e) {
+                $msg = 'No se pudo eliminar: el usuario tiene registros asociados. Desactívelo en su lugar.';
+            }
+        }
     }
 
-    header('Location: index.php?menu=usuarios&opc=tabla');
+    header('Location: index.php?menu=usuarios&opc=tabla' . ($msg !== '' ? '&err=' . urlencode($msg) : ''));
     exit;
 }
 
 /* ── Obtener usuarios ── */
-$usuarios  = $pdo->query("SELECT id_usuario, nombre, apellido_paterno, apellido_materno, correo, activo FROM usuarios ORDER BY id_usuario")->fetchAll();
+$usuarios  = $pdo->query("SELECT id_usuario, nombre, apellido_paterno, apellido_materno, correo, activo, rol FROM usuarios ORDER BY id_usuario")->fetchAll();
 $total     = count($usuarios);
 $activos   = count(array_filter($usuarios, fn($u) => $u['activo']));
 $inactivos = $total - $activos;
@@ -98,6 +114,9 @@ $pagina_activa = 'usuarios';
 $titulo_pagina = 'Usuarios';
 require_once __DIR__ . '/layout_header.php';
 ?>
+<?php if (!empty($_GET['err'])): ?>
+<div style="background:#fef2f2;border:1px solid #fca5a5;color:#b91c1c;padding:10px 14px;border-radius:8px;margin-bottom:16px;font-size:13px"><?= e((string)$_GET['err']) ?></div>
+<?php endif; ?>
 
 <style>
 .field-error {
@@ -203,7 +222,7 @@ input.input-error {
            <?php $loop = 1; foreach ($usuarios as $u): ?>
             <tr>
                 <td><?= $loop++ ?></td>
-                <td><strong><?= e($u['nombre']) ?></strong></td>
+                <td><strong><?= e($u['nombre']) ?></strong><?php if ($u['rol'] === 'dueno'): ?> <span class="badge badge-green" style="margin-left:6px"><i class="fa-solid fa-crown" style="font-size:9px;margin-right:4px"></i>Dueño</span><?php endif; ?></td>
                 <td><?= e($u['apellido_paterno']) ?> <?= e($u['apellido_materno'] ?? '') ?></td>
                 <td><a href="mailto:<?= e($u['correo']) ?>" class="email-link"><?= e($u['correo']) ?></a></td>
                 <td>
@@ -215,18 +234,20 @@ input.input-error {
                 </td>
                 <td style="white-space:nowrap; text-align:center">
                     <button class="btn-icon" title="Editar"
-                        onclick="abrirEditar(<?= $u['id_usuario'] ?>,'<?= e($u['nombre']) ?>','<?= e($u['apellido_paterno']) ?>','<?= e($u['apellido_materno'] ?? '') ?>','<?= e($u['correo']) ?>')">
+                        onclick="abrirEditar(<?= $u['id_usuario'] ?>,<?= e(json_encode($u['nombre'])) ?>,<?= e(json_encode($u['apellido_paterno'])) ?>,<?= e(json_encode($u['apellido_materno'] ?? '')) ?>,<?= e(json_encode($u['correo'])) ?>)">
                         <i class="fa-solid fa-pen-to-square"></i>
                     </button>
+                    <?php if ($u['rol'] !== 'dueno' && (int)$u['id_usuario'] !== $yo): ?>
                     <button class="btn-icon <?= $u['activo'] ? 'danger active-toggle' : '' ?>"
                             title="<?= $u['activo'] ? 'Desactivar' : 'Activar' ?>"
-                            onclick="confirmarToggle(<?= $u['id_usuario'] ?>,<?= (int)$u['activo'] ?>,'<?= e($u['nombre']) ?>')">
+                            onclick="confirmarToggle(<?= $u['id_usuario'] ?>,<?= (int)$u['activo'] ?>,<?= e(json_encode($u['nombre'])) ?>)">
                         <i class="fa-solid <?= $u['activo'] ? 'fa-toggle-on' : 'fa-toggle-off' ?>"></i>
                     </button>
                     <button class="btn-icon danger" title="Eliminar"
-                            onclick="confirmarEliminar(<?= $u['id_usuario'] ?>,'<?= e($u['nombre']) ?>')">
+                            onclick="confirmarEliminar(<?= $u['id_usuario'] ?>,<?= e(json_encode($u['nombre'])) ?>)">
                         <i class="fa-regular fa-trash-can"></i>
                     </button>
+                    <?php endif; ?>
                 </td>
             </tr>
             <?php endforeach; ?>

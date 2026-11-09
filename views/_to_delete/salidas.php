@@ -21,6 +21,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $all      = salidas_leer();
         $cantidad = floatval($_POST['cantidad']       ?? 0);
         $precio   = floatval($_POST['precio_unitario'] ?? 0);
+        $uni      = $_POST['unidad'] ?? 'kg';
+        $kgSalida = $uni === 'ton' ? $cantidad * 1000 : ($uni === 'kg' ? $cantidad : 0);
+        foreach (existencias_leer() as $ex) {
+            if (mb_strtolower($ex['nombre']) === mb_strtolower(trim($_POST['material'] ?? '')) && $kgSalida > $ex['existencia'] + 0.0001) {
+                $err = "Existencia insuficiente de {$ex['nombre']}: disponible " . number_format(max(0, $ex['existencia']), 2) . " kg.";
+                header('Location: index.php?menu=salidas&opc=tabla&err=' . urlencode($err)); exit;
+            }
+        }
         $all[]    = [
             'id'                  => uniqid(),
             'fecha'               => date('Y-m-d H:i:s'),
@@ -35,17 +43,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ];
         usort($all, fn($a,$b) => strcmp($b['fecha'], $a['fecha']));
         salidas_guardar($all);
+        auditar('salidas', 'crear', number_format($cantidad, 2) . " {$uni} de " . trim($_POST['material'] ?? ''));
         header('Location: index.php?menu=salidas&opc=tabla'); exit;
     }
     if ($action === 'eliminar') {
         $id  = $_POST['id'] ?? '';
         $all = array_values(array_filter(salidas_leer(), fn($s) => $s['id'] !== $id));
         salidas_guardar($all);
+        auditar('salidas', 'eliminar', $id);
         header('Location: index.php?menu=salidas&opc=tabla'); exit;
     }
 }
 
 $all_salidas    = salidas_leer();
+$exis_sal       = existencias_leer();
 $total_salidas  = count($all_salidas);
 $total_ingresos = array_sum(array_column($all_salidas, 'total'));
 $total_kg       = array_sum(array_column($all_salidas, 'cantidad'));
@@ -66,6 +77,9 @@ if ($buscar !== '') {
 
 include 'layout_header.php';
 ?>
+<?php if (!empty($_GET['err'])): ?>
+<div style="background:#fef2f2;border:1.5px solid #fca5a5;color:#dc2626;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13.5px;font-weight:500"><?= e($_GET['err']) ?></div>
+<?php endif; ?>
 
 <div class="section-header">
     <div class="section-title"><i class="fa-solid fa-truck-ramp-box" style="color:var(--green-mid);margin-right:8px;"></i>Salida de material</div>
@@ -127,10 +141,11 @@ include 'layout_header.php';
                 <div class="form-row"><label>Contacto (opcional)</label><input type="text" name="recicladora_contacto" placeholder="Teléfono o correo"></div>
                 <div class="form-row">
                     <label>Material *</label>
-                    <select name="material" required>
+                    <select name="material" id="sal_m" required>
                         <option value="">— Seleccionar —</option>
-                        <option>PET</option><option>Cartón</option><option>Aluminio</option>
-                        <option>Vidrio</option><option>Papel</option><option>Cobre</option><option>Hierro</option><option>Otro</option>
+                        <?php foreach (materiales_leer() as $mt): $dx = $exis_sal[$mt['id_material']]['existencia'] ?? 0; ?>
+                        <option value="<?= e($mt['nombre']) ?>" data-stock="<?= round($dx, 2) ?>"><?= e($mt['nombre']) ?> — <?= number_format(max(0, $dx), 2) ?> kg disp.</option>
+                        <?php endforeach; ?>
                     </select>
                 </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
@@ -152,6 +167,13 @@ include 'layout_header.php';
 </div>
 
 <script>
+function ajustarMax() {
+    const o = document.getElementById('sal_m').selectedOptions[0], u = document.querySelector('[name="unidad"]').value, c = document.getElementById('sal_c');
+    if (o && o.dataset.stock !== undefined && o.value && u !== 'pza') c.max = u === 'ton' ? (o.dataset.stock / 1000).toFixed(3) : o.dataset.stock;
+    else c.removeAttribute('max');
+}
+document.getElementById('sal_m').addEventListener('change', ajustarMax);
+document.querySelector('[name="unidad"]').addEventListener('change', ajustarMax);
 function calcTotal() {
     const c = parseFloat(document.getElementById('sal_c').value) || 0;
     const p = parseFloat(document.getElementById('sal_p').value) || 0;

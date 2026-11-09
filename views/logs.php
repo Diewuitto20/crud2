@@ -4,52 +4,29 @@ require_once __DIR__ . '/data.php';
 $titulo_pagina = 'Logs';
 $pagina_activa = 'logs';
 
-define('AUDITORIA_FILE', __DIR__ . '/auditoria.json');
+require_once dirname(__DIR__) . '/models/LogsModel.php';
 
-function auditoria_leer(): array {
-    if (!file_exists(AUDITORIA_FILE)) return [];
-    $data = json_decode(file_get_contents(AUDITORIA_FILE), true);
-    return is_array($data) ? $data : [];
-}
-
-function registrar_log(string $modulo, string $accion, string $descripcion = ''): void {
-    $logs   = auditoria_leer();
-    $logs[] = [
-        'id'             => uniqid(),
-        'fecha'          => date('Y-m-d H:i:s'),
-        'usuario_nombre' => $_SESSION['nombre'] ?? 'sistema',
-        'modulo'         => $modulo,
-        'accion'         => $accion,
-        'descripcion'    => $descripcion,
-        'ip'             => $_SERVER['REMOTE_ADDR'] ?? '—',
-    ];
-    if (count($logs) > 1000) $logs = array_slice($logs, -1000);
-    file_put_contents(AUDITORIA_FILE, json_encode($logs, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-}
-
-/* ── Filtros ── */
 $filtro_modulo  = trim($_GET['modulo']  ?? '');
 $filtro_usuario = trim($_GET['usuario'] ?? '');
 $filtro_fecha   = trim($_GET['fecha']   ?? '');
 $buscar         = trim($_GET['buscar']  ?? '');
 
-$all_logs = array_reverse(auditoria_leer());
+if ($filtro_fecha !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $filtro_fecha)) $filtro_fecha = '';
 
-$logs = array_filter($all_logs, function($l) use ($filtro_modulo, $filtro_usuario, $filtro_fecha, $buscar) {
-    if ($filtro_modulo  && $l['modulo'] !== $filtro_modulo)                          return false;
-    if ($filtro_usuario && stripos($l['usuario_nombre'], $filtro_usuario) === false)  return false;
-    if ($filtro_fecha   && substr($l['fecha'], 0, 10) !== $filtro_fecha)             return false;
-    if ($buscar         && stripos($l['descripcion'], $buscar) === false)             return false;
-    return true;
-});
-$logs = array_slice($logs, 0, 500);
-
-/* ── Stats ── */
-$total_logs   = count($all_logs);
-$hoy_logs     = count(array_filter($all_logs, fn($l) => substr($l['fecha'],0,10) === date('Y-m-d')));
-$modulos_list = array_unique(array_column($all_logs, 'modulo'));
-sort($modulos_list);
-$usuarios_u   = count(array_unique(array_column($all_logs, 'usuario_nombre')));
+try {
+    $logs = LogsModel::todos([
+        'modulo' => $filtro_modulo, 'usuario' => $filtro_usuario,
+        'fecha'  => $filtro_fecha,  'buscar'  => $buscar,
+    ]);
+    $st           = LogsModel::stats();
+    $modulos_list = LogsModel::modulos();
+    $total_logs   = (int)$st['total'];
+    $hoy_logs     = (int)$st['hoy'];
+    $usuarios_u   = (int)$st['usuarios'];
+} catch (Throwable $ex) {
+    $logs = []; $modulos_list = []; $total_logs = $hoy_logs = $usuarios_u = 0;
+    $errLogs = $ex->getMessage();
+}
 
 include 'layout_header.php';
 
@@ -79,6 +56,8 @@ function badge_accion(string $accion): string {
 <div class="section-header">
     <div class="section-title"><i class="fa-solid fa-clipboard-list" style="color:var(--green-mid);margin-right:8px;"></i>Logs</div>
 </div>
+
+<?php if (!empty($errLogs)): ?><div style="background:#fef2f2;border:1px solid #fca5a5;color:#b91c1c;padding:10px 14px;border-radius:8px;margin-bottom:16px;font-size:13px">No se pudo leer la bitácora: <?= e($errLogs) ?></div><?php endif; ?>
 
 <div class="stats-grid">
     <div class="stat-card"><div class="stat-label">Total eventos</div><div class="stat-value"><?= number_format($total_logs) ?><i class="fa-solid fa-list stat-icon"></i></div></div>

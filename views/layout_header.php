@@ -171,12 +171,15 @@
         <i class="fa-solid fa-gauge-high"></i> Dashboard
     </a>
 </li>
+<?php require_once __DIR__ . '/permisos.php'; $__dueno = es_dueno(); ?>
+<?php if ($__dueno): ?>
 <li>
             <a href="index.php?menu=usuarios&opc=tabla"
                <?= $pagina_activa === 'usuarios' ? 'class="active"' : '' ?>>
                 <i class="fa-solid fa-users"></i> Usuarios
             </a>
         </li>
+<?php endif; ?>
         <li>
             <a href="index.php?menu=material&opc=tabla"
                <?= $pagina_activa === 'material' ? 'class="active"' : '' ?>>
@@ -195,18 +198,15 @@
                 <i class="fa-solid fa-receipt"></i> Registro de compras
             </a>
         </li>
-        <li>
-            <a href="index.php?menu=gestion_compras&opc=tabla"
-               <?= $pagina_activa === 'gestion_compras' ? 'class="active"' : '' ?>>
-                <i class="fa-solid fa-scale-unbalanced"></i> Gestión de compras
-            </a>
-        </li>
+<?php if ($__dueno): ?>
         <li>
         <a href="index.php?menu=respaldos&opc=tabla"
                <?= $pagina_activa === 'respaldos' ? 'class="active"' : '' ?>>
                 <i class="fa-solid fa-database"></i> Respaldos
             </a>
         </li>
+<?php endif; ?>
+<?php if ($__dueno): ?>
         <li>
     <a href="index.php?menu=ventas"
        <?= $pagina_activa === 'ventas' ? 'class="active"' : '' ?>>
@@ -220,23 +220,20 @@
     </a>
 </li>
 <li>
-    <a href="index.php?menu=salidas&opc=tabla"
-       <?= $pagina_activa === 'salidas' ? 'class="active"' : '' ?>>
-        <i class="fa-solid fa-truck-ramp-box"></i> Salida de material
-    </a>
-</li>
-<li>
     <a href="index.php?menu=metas&opc=tabla"
        <?= $pagina_activa === 'metas' ? 'class="active"' : '' ?>>
         <i class="fa-solid fa-leaf"></i> Metas ambientales
     </a>
 </li>
+<?php endif; ?>
+<?php if ($__dueno): ?>
 <li>
     <a href="index.php?menu=logs&opc=tabla"
        <?= $pagina_activa === 'logs' ? 'class="active"' : '' ?>>
         <i class="fa-solid fa-clipboard-list"></i> Logs
     </a>
 </li>
+<?php endif; ?>
 
     </ul>
 

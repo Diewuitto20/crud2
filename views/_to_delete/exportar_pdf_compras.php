@@ -2,6 +2,9 @@
 
 ob_start();
 session_start();
+if (empty($_SESSION['autenticado'])) { http_response_code(403); exit('Acceso no autorizado'); }
+require_once __DIR__ . '/permisos.php';
+if (!es_dueno()) { http_response_code(403); exit('Solo el dueño puede generar este reporte'); }
 
 $env = require __DIR__ . '/../env.php';
 try {
@@ -42,7 +45,7 @@ class ReporteMateriales extends FPDF {
 
 /* Datos desde tabla materiales */
 $materiales = $pdo->query(
-    "SELECT id_material, nombre, categoria, unidad, precio_kg, stock, stock_min
+    "SELECT id_material, nombre, categoria, unidad, precio_kg, stock_max AS stock, stock_min
      FROM materiales ORDER BY nombre ASC"
 )->fetchAll();
 

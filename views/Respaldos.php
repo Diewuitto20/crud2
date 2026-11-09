@@ -244,20 +244,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             /* Extraer SQL */
                             $zip->extractTo($importDir, $sqlEntry);
 
-                            /* Extraer JSONs si existen en el ZIP */
-                            $jsonDestinos = [
-                                'json/materiales.json' => __DIR__ . '/materiales.json',
-                                'json/compras.json'    => __DIR__ . '/compras.json',
-                                'json/eventos.json'    => __DIR__ . '/eventos.json',
-                            ];
-                            foreach ($jsonDestinos as $zipPath => $destino) {
-                                if ($zip->locateName($zipPath) !== false) {
-                                    $contenido = $zip->getFromName($zipPath);
-                                    if ($contenido !== false) {
-                                        file_put_contents($destino, $contenido);
-                                    }
-                                }
-                            }
                             $zip->close();
 
                             $absoluteSqlPath = $importDir . $sqlEntry;
@@ -527,20 +513,6 @@ require_once __DIR__ . '/layout_header.php';
 
 <!-- ── Tarjetas de acción ── -->
 <div class="resp-action-grid">
-
-    <!-- Exportar PDF -->
-    <div class="resp-action-card resp-card--red">
-        <div class="resp-action-top">
-            <div>
-                <p class="resp-action-title">Exportar PDF</p>
-                <p class="resp-action-desc">Genera un reporte de materiales en formato PDF</p>
-            </div>
-            <div class="resp-action-icon"><i class="fa-solid fa-file-pdf"></i></div>
-        </div>
-        <a href="exportar_pdf_compras.php" target="_blank" class="resp-action-btn resp-btn--red">
-            <i class="fa-solid fa-download"></i> Exportar PDF
-        </a>
-    </div>
 
     <!-- Exportar SQL -->
     <div class="resp-action-card resp-card--purple">

@@ -5,7 +5,6 @@ $titulo_pagina = 'Metas Ambientales';
 $pagina_activa = 'metas';
 
 define('METAS_FILE',   __DIR__ . '/metas.json');
-define('TICKETS_FILE2', __DIR__ . '/tickets.json');
 
 function metas_leer(): array {
     if (!file_exists(METAS_FILE)) return [];
@@ -16,9 +15,8 @@ function metas_guardar(array $m): void {
     file_put_contents(METAS_FILE, json_encode($m, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 }
 function tickets_leer2(): array {
-    if (!file_exists(TICKETS_FILE2)) return [];
-    $data = json_decode(file_get_contents(TICKETS_FILE2), true);
-    return is_array($data) ? $data : [];
+    /* El avance de las metas se calcula con los kilos de Registro de compras */
+    return array_map(fn($c) => ['material' => $c['clasificacion'], 'peso' => (float)$c['kilos'], 'fecha' => $c['fecha']], compras_leer());
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

@@ -4,7 +4,24 @@ require_once dirname(__DIR__) . '/config/database.php';
 
 class LogsModel {
 
+    public static function asegurarTabla(): void {
+        static $ok = false;
+        if ($ok) return;
+        get_db()->exec("CREATE TABLE IF NOT EXISTS auditoria (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            fecha DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            usuario_nombre VARCHAR(100) NOT NULL DEFAULT 'sistema',
+            modulo VARCHAR(50) NOT NULL,
+            accion VARCHAR(50) NOT NULL,
+            descripcion TEXT NULL,
+            ip VARCHAR(45) NULL,
+            INDEX idx_fecha (fecha), INDEX idx_modulo (modulo)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        $ok = true;
+    }
+
     public static function todos(array $filtros = []): array {
+        self::asegurarTabla();
         $where  = ['1=1'];
         $params = [];
 
@@ -21,6 +38,7 @@ class LogsModel {
 
     public static function registrar(string $modulo, string $accion,
                                       string $descripcion = ''): void {
+        self::asegurarTabla();
         get_db()->prepare(
             "INSERT INTO auditoria (usuario_nombre, modulo, accion, descripcion, ip)
              VALUES (:usuario, :modulo, :accion, :desc, :ip)"
@@ -34,6 +52,7 @@ class LogsModel {
     }
 
     public static function stats(): array {
+        self::asegurarTabla();
         $pdo = get_db();
         return [
             'total'       => $pdo->query("SELECT COUNT(*) FROM auditoria")->fetchColumn(),
@@ -44,6 +63,7 @@ class LogsModel {
     }
 
     public static function modulos(): array {
+        self::asegurarTabla();
         return get_db()
             ->query("SELECT DISTINCT modulo FROM auditoria ORDER BY modulo")
             ->fetchAll(\PDO::FETCH_COLUMN);

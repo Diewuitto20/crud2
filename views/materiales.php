@@ -96,6 +96,9 @@ foreach ($materiales_predefinidos as $items) {
 /* Categorías predefinidas — ahora incluye Metales */
 $categorias_predefinidas = ['Plástico PET', 'HDPE', 'Cartón', 'Aluminio', 'Metales', 'Vidrio', 'Electrónicos', 'Otro'];
 ?>
+<?php if (!empty($_GET['err'])): ?>
+<div style="background:#fef2f2;border:1px solid #fca5a5;color:#b91c1c;padding:10px 14px;border-radius:8px;margin-bottom:16px;font-size:13px"><?= htmlspecialchars((string)$_GET['err'], ENT_QUOTES, 'UTF-8') ?></div>
+<?php endif; ?>
 
 <style>
 .mat-form-card {
@@ -207,9 +210,11 @@ select:disabled {
         <h2 class="section-title">Registro de Materiales</h2>
         <p style="font-size:13px;color:var(--text-gray);margin-top:2px">Catálogo de materiales reciclables</p>
     </div>
+    <?php if (es_dueno()): ?>
     <button class="btn-primary" id="btnNuevoMaterial">
         <i class="fa-solid fa-plus"></i> Nuevo Material
     </button>
+    <?php endif; ?>
 </div>
 
 <div class="mat-form-card" id="matFormCard" style="display:none">
@@ -358,7 +363,7 @@ select:disabled {
                 <th>PRECIO</th>
                 <th>STOCK MÁXIMO</th>
                 <th>STOCK MÍNIMO</th>
-                <th style="width:90px">ACCIONES</th>
+                <?php if (es_dueno()): ?><th style="width:90px">ACCIONES</th><?php endif; ?>
             </tr>
         </thead>
         <tbody>
@@ -376,13 +381,14 @@ select:disabled {
                 <td>$<?= number_format($m['precio_kg'], 2) ?>/kg</td>
                 <td><?= number_format($m['stock_max'], 0) ?> <?= htmlspecialchars($m['unidad'], ENT_QUOTES, 'UTF-8') ?></td>
                 <td><?= number_format($m['stock_min'], 0) ?> <?= htmlspecialchars($m['unidad'], ENT_QUOTES, 'UTF-8') ?></td>
+                <?php if (es_dueno()): ?>
                 <td>
                     <button class="btn-icon" title="Editar"
                         onclick="editarMaterial(
-                            '<?= htmlspecialchars($m['id'],        ENT_QUOTES, 'UTF-8') ?>',
-                            '<?= htmlspecialchars($m['nombre'],    ENT_QUOTES, 'UTF-8') ?>',
-                            '<?= htmlspecialchars($m['categoria'], ENT_QUOTES, 'UTF-8') ?>',
-                            '<?= htmlspecialchars($m['unidad'],    ENT_QUOTES, 'UTF-8') ?>',
+                            <?= htmlspecialchars(json_encode($m['id']), ENT_QUOTES, 'UTF-8') ?>,
+                            <?= htmlspecialchars(json_encode($m['nombre']), ENT_QUOTES, 'UTF-8') ?>,
+                            <?= htmlspecialchars(json_encode($m['categoria']), ENT_QUOTES, 'UTF-8') ?>,
+                            <?= htmlspecialchars(json_encode($m['unidad']), ENT_QUOTES, 'UTF-8') ?>,
                             '<?= $m['precio_kg'] ?>',
                             '<?= $m['stock_max'] ?>',
                             '<?= $m['stock_min'] ?>'
@@ -391,12 +397,13 @@ select:disabled {
                     </button>
                     <button class="btn-icon danger" title="Eliminar"
                         onclick="confirmarEliminar(
-                            '<?= htmlspecialchars($m['id'],     ENT_QUOTES, 'UTF-8') ?>',
-                            '<?= htmlspecialchars($m['nombre'], ENT_QUOTES, 'UTF-8') ?>'
+                            <?= htmlspecialchars(json_encode($m['id']), ENT_QUOTES, 'UTF-8') ?>,
+                            <?= htmlspecialchars(json_encode($m['nombre']), ENT_QUOTES, 'UTF-8') ?>
                         )">
                         <i class="fa-regular fa-trash-can" style="color:#dc2626"></i>
                     </button>
                 </td>
+                <?php endif; ?>
             </tr>
             <?php endforeach; ?>
             <?php endif; ?>

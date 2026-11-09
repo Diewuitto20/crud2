@@ -1,0 +1,3 @@
+<FilesMatch "\.(json|bak|sql|zip|cnf)$">
+    Require all denied
+</FilesMatch>

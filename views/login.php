@@ -1,6 +1,8 @@
 <?php
 
 $env = require __DIR__ . '/../env.php';
+require_once __DIR__ . '/permisos.php';
+asegurar_rol();
 try {
     $pdo = new PDO(
         "mysql:host={$env['DB_HOST']};dbname={$env['DB_NAME']};charset={$env['DB_CHARSET']}",
@@ -17,6 +19,10 @@ $current_view    = 'login';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
+    if ($action === 'register' && !registro_abierto()) {
+        $error_message = 'El registro está cerrado. Pida al dueño que cree su cuenta.';
+        $action = 'bloqueado';
+    }
 
     /* ── LOGIN ── */
   if ($action === 'login') {
@@ -35,16 +41,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute([':correo' => $correo]);
         $usuario = $stmt->fetch();
 
-        if (!$usuario || $password !== $usuario['contrasena']) {
+        $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+        $bloq = false;
+        try {
+            LogsModel::asegurarTabla();
+            $q = $pdo->prepare("SELECT COUNT(*) FROM auditoria WHERE accion = 'login_fallido' AND ip = ? AND fecha > (NOW() - INTERVAL 10 MINUTE)");
+            $q->execute([$ip]);
+            $bloq = (int)$q->fetchColumn() >= 5;
+        } catch (Throwable $e) {}
+
+        if ($bloq) {
+            $error_message = 'Demasiados intentos fallidos. Espere 10 minutos.';
+        } elseif (!$usuario || !clave_valida($password, (string)$usuario['contrasena'])) {
+            try { LogsModel::registrar('sesion', 'login_fallido', 'Intento fallido con ' . $correo); } catch (Throwable $e) {}
             $error_message = 'Correo o contraseña incorrectos.';
         } elseif ($usuario['activo'] == 0) {
             $error_message = 'Tu cuenta está desactivada. Contacta al administrador.';
         } else {
+            session_regenerate_id(true);
+            if (!preg_match('/^\$2[aby]\$|^\$argon2/', (string)$usuario['contrasena'])) {
+                try { $pdo->prepare("UPDATE usuarios SET contrasena = ? WHERE id_usuario = ?")->execute([hash_clave($password), $usuario['id_usuario']]); } catch (Throwable $e) {}
+            }
             $_SESSION['id_usuario']  = $usuario['id_usuario'];
             $_SESSION['nombre']      = $usuario['nombre'];
             $_SESSION['apellido']    = $usuario['apellido_paterno'];
             $_SESSION['correo']      = $usuario['correo'];
             $_SESSION['autenticado'] = true;
+            try { LogsModel::registrar('sesion', 'login', 'Inicio de sesión de ' . $usuario['correo']); } catch (Throwable $e) {}
 
             header('Location: index.php?menu=dashboard');
             exit;
@@ -95,8 +118,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ':ap_pat'     => $ap_pat,
                     ':ap_mat'     => $ap_mat,
                     ':correo'     => $correo,
-                    ':contrasena' => $password,
+                    ':contrasena' => hash_clave($password),
                 ]);
+                asegurar_rol();
 
                 $success_message = '¡Cuenta creada exitosamente! Ya puedes iniciar sesión.';
                 $current_view    = 'login';
@@ -251,7 +275,7 @@ function old(string $key, string $action_required = '', string $default = ''): s
                 <button type="button" class="link-small" onclick="switchView('recover')">¿Olvidaste tu contraseña?</button>
                 <div class="btn-group">
                     <button type="submit" class="btn btn-primary">Iniciar sesión</button>
-                    <button type="button" class="btn btn-secondary" onclick="switchView('register')">Crear cuenta</button>
+                    <?php if (registro_abierto()): ?><button type="button" class="btn btn-secondary" onclick="switchView('register')">Crear cuenta</button><?php endif; ?>
                 </div>
             </form>
         </div>

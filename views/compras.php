@@ -4,22 +4,51 @@ require_once __DIR__ . '/data.php';
 /* ── Acciones ── */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
+    $err = '';
+    $porNombre = [];
+    foreach (materiales_leer() as $mt) $porNombre[mb_strtolower($mt['nombre'])] = $mt;
+    $exis = existencias_leer();
+
     if ($action === 'crear') {
-        compra_crear(
-            trim($_POST['material']   ?? ''),
-            trim($_POST['proveedor']  ?? ''),
-            (float) ($_POST['cantidad']  ?? 0),
-            (float) ($_POST['precio_kg'] ?? 0)
-        );
+        $mat    = trim($_POST['material'] ?? '');
+        $kg     = (float) ($_POST['cantidad']  ?? 0);
+        $precio = (float) ($_POST['precio_kg'] ?? 0);
+        $mt     = $porNombre[mb_strtolower($mat)] ?? null;
+        if (!$mt || $kg <= 0 || $precio <= 0) {
+            $err = 'Elige un material e indica kilos y precio válidos.';
+        } else {
+            $libre = (float)$mt['stock_max'] - ($exis[$mt['id_material']]['existencia'] ?? 0);
+            if ($kg > $libre + 0.0001) {
+                $err = "Se excede el stock máximo de {$mt['nombre']} ({$mt['stock_max']} kg). Capacidad disponible: " . number_format(max(0, $libre), 2) . " kg.";
+            } else {
+                compra_crear($mt['nombre'], '', $kg, $kg * $precio);
+                auditar('compras', 'crear', number_format($kg, 2) . " kg de {$mt['nombre']} a $" . number_format($precio, 2) . "/kg");
+            }
+        }
+    } elseif ($action === 'eliminar' && !es_dueno()) {
+        $err = 'Solo el dueño puede eliminar compras.';
     } elseif ($action === 'eliminar') {
-        compra_eliminar($_POST['id'] ?? '');
+        $id = (int) ($_POST['id'] ?? 0);
+        $c  = get_pdo()->prepare("SELECT clasificacion, kilos FROM gestion_compras WHERE id_gestion_venta = ?");
+        $c->execute([$id]); $c = $c->fetch();
+        if ($c) {
+            $mt = $porNombre[mb_strtolower(trim($c['clasificacion']))] ?? null;
+            if ($mt && ($exis[$mt['id_material']]['existencia'] ?? 0) - (float)$c['kilos'] < -0.0001) {
+                $err = "No se puede eliminar: la existencia de {$mt['nombre']} quedaría en negativo (ese material ya se vendió o salió).";
+            } else {
+                compra_eliminar($id);
+                auditar('compras', 'eliminar', number_format((float)$c['kilos'], 2) . " kg de {$c['clasificacion']}");
+            }
+        }
     }
-    header('Location: index.php?menu=compras&opc=tabla');
+    header('Location: index.php?menu=compras&opc=tabla' . ($err ? '&err=' . urlencode($err) : ''));
     exit;
 }
 
 /* ── Datos ── */
 $compras         = compras_leer();
+$catalogo        = materiales_leer();
+$existencias     = existencias_leer();
 $total_monto     = array_sum(array_column($compras, 'total'));
 $total_transacc  = count($compras);
 
@@ -44,6 +73,10 @@ function badge_material(string $m): string {
 }
 ?>
 
+        <?php if (!empty($_GET['err'])): ?>
+        <div style="background:#fef2f2;border:1.5px solid #fca5a5;color:#dc2626;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13.5px;font-weight:500"><?= e($_GET['err']) ?></div>
+        <?php endif; ?>
+
         <div class="section-header">
             <div>
                 <h2 class="section-title">Registro de Compras</h2>
@@ -66,6 +99,20 @@ function badge_material(string $m): string {
             </div>
         </div>
 
+        <!-- EXISTENCIA -->
+        <p class="exist-titulo">Existencia actual (compras − ventas)</p>
+        <div class="exist-grid">
+            <?php foreach ($catalogo as $mt):
+                $ex  = $existencias[$mt['id_material']]['existencia'] ?? 0;
+                $col = $ex < (float)$mt['stock_min'] ? '#dc2626' : ($ex > (float)$mt['stock_max'] ? '#d97706' : '#16a34a'); ?>
+            <div class="exist-card">
+                <span class="exist-nombre"><?= e($mt['nombre']) ?></span>
+                <strong style="color:<?= $col ?>"><?= number_format($ex, 2) ?> kg</strong>
+                <small>mín <?= number_format($mt['stock_min']) ?> · máx <?= number_format($mt['stock_max']) ?></small>
+            </div>
+            <?php endforeach; ?>
+        </div>
+
         <!-- TABLA -->
         <div class="table-card">
             <table class="data-table">
@@ -76,14 +123,13 @@ function badge_material(string $m): string {
                         <th>CANTIDAD</th>
                         <th>PRECIO/KG</th>
                         <th>TOTAL</th>
-                        <th>PROVEEDOR</th>
                         <th style="width:80px"></th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (empty($compras)): ?>
                     <tr>
-                        <td colspan="7" style="text-align:center;padding:32px;color:var(--text-gray)">
+                        <td colspan="6" style="text-align:center;padding:32px;color:var(--text-gray)">
                             No hay compras registradas
                         </td>
                     </tr>
@@ -97,8 +143,8 @@ function badge_material(string $m): string {
                         <td><?= number_format($cp['cantidad'], 0) ?> kg</td>
                         <td>$<?= number_format($cp['precio_kg'], 2) ?></td>
                         <td><strong>$<?= number_format($cp['total'], 2) ?></strong></td>
-                        <td><?= e($cp['proveedor']) ?></td>
                         <td>
+                            <?php if (es_dueno()): ?>
                             <form method="POST" action="index.php?menu=compras&opc=tabla" style="margin:0;display:inline">
                                 <input type="hidden" name="action" value="eliminar">
                                 <input type="hidden" name="id" value="<?= e($cp['id']) ?>">
@@ -107,6 +153,7 @@ function badge_material(string $m): string {
                                     <i class="fa-regular fa-trash-can"></i>
                                 </button>
                             </form>
+                            <?php endif; ?>
                         </td>
                     </tr>
                     <?php endforeach; ?>
@@ -128,21 +175,15 @@ function badge_material(string $m): string {
             <input type="hidden" name="action" value="crear">
             <div class="modal-body">
                 <div class="form-grid-2">
-                    <div class="form-row">
+                    <div class="form-row" style="grid-column:1/-1">
                         <label>Material</label>
-                        <select name="material" id="inp_material" required onchange="calcTotal()">
+                        <select name="material" id="inp_material" required onchange="selMat(this)">
                             <option value="">Seleccionar material...</option>
-                            <option value="Plástico PET">Plástico PET</option>
-                            <option value="HDPE">HDPE</option>
-                            <option value="Cartón">Cartón</option>
-                            <option value="Aluminio">Aluminio</option>
-                            <option value="Vidrio">Vidrio</option>
-                            <option value="Otro">Otro</option>
+                            <?php foreach ($catalogo as $mt): ?>
+                            <?php $libre = (float)$mt['stock_max'] - ($existencias[$mt['id_material']]['existencia'] ?? 0); ?>
+                            <option value="<?= e($mt['nombre']) ?>" data-precio="<?= (float)$mt['precio_kg'] ?>" data-libre="<?= round($libre, 2) ?>"<?= $libre <= 0 ? ' disabled' : '' ?>><?= e($mt['nombre']) ?> — cabe <?= number_format(max(0, $libre), 2) ?> kg</option>
+                            <?php endforeach; ?>
                         </select>
-                    </div>
-                    <div class="form-row">
-                        <label>Proveedor</label>
-                        <input type="text" name="proveedor" placeholder="Nombre del proveedor" required>
                     </div>
                     <div class="form-row">
                         <label>Cantidad (kg)</label>
@@ -174,6 +215,12 @@ function badge_material(string $m): string {
     gap: 16px;
     margin-bottom: 24px;
 }
+.exist-titulo { font-size:13px; font-weight:600; color:var(--text-gray); margin:4px 0 10px; }
+.exist-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:12px; margin-bottom:20px; }
+.exist-card { background:#fff; border:1px solid var(--border); border-radius:12px; padding:14px 16px; display:flex; flex-direction:column; gap:4px; box-shadow:var(--shadow-sm); }
+.exist-nombre { font-size:13px; color:var(--text-gray); font-weight:500; }
+.exist-card strong { font-size:20px; }
+.exist-card small { font-size:11.5px; color:var(--text-gray); }
 .resumen-card {
     border-radius: var(--radius-card);
     padding: 20px 24px;
@@ -219,6 +266,13 @@ function badge_material(string $m): string {
 </style>
 
 <script>
+function selMat(sel) {
+    const p = sel.selectedOptions[0]?.dataset.precio;
+    if (p) document.getElementById('inp_precio').value = p;
+    const libre = sel.selectedOptions[0]?.dataset.libre, c = document.getElementById('inp_cantidad');
+    if (libre !== undefined) { c.max = libre; c.placeholder = 'máx ' + libre; } else { c.removeAttribute('max'); c.placeholder = '0'; }
+    calcTotal();
+}
 function calcTotal() {
     const cant  = parseFloat(document.getElementById('inp_cantidad').value) || 0;
     const precio = parseFloat(document.getElementById('inp_precio').value)  || 0;

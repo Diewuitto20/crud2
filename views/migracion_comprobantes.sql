@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS comprobantes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    folio VARCHAR(20) NOT NULL UNIQUE,
+    tipo_origen VARCHAR(10) NOT NULL,
+    id_origen VARCHAR(50) NOT NULL,
+    fecha_emision DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    cliente_nombre VARCHAR(150) NOT NULL,
+    cliente_rfc VARCHAR(20) NULL,
+    cliente_direccion VARCHAR(255) NULL,
+    cliente_contacto VARCHAR(120) NULL,
+    forma_pago VARCHAR(20) NOT NULL,
+    iva_modo VARCHAR(10) NOT NULL DEFAULT 'ninguno',
+    notas VARCHAR(255) NULL,
+    detalle TEXT NOT NULL,
+    subtotal DECIMAL(12,2) NOT NULL,
+    iva DECIMAL(12,2) NOT NULL DEFAULT 0,
+    total DECIMAL(12,2) NOT NULL,
+    estado VARCHAR(12) NOT NULL DEFAULT 'Emitida',
+    id_usuario INT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

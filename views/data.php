@@ -1,4 +1,8 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) session_start();
+if (empty($_SESSION['autenticado'])) { header('Location: index.php?menu=login'); exit; }
+require_once __DIR__ . '/permisos.php';
+if (in_array(strtolower(basename($_SERVER['SCRIPT_NAME'] ?? '')), ['ventas.php', 'tickets.php', 'metas.php', 'respaldos.php', 'logs.php', 'usuarios.php'], true)) exigir_dueno();
 
 
 function e(string $s): string {
@@ -168,6 +172,30 @@ function compra_eliminar(int $id): void {
 
 
 
+
+/* Existencia por material = compras - ventas activas (en kg), indexada por id_material */
+function existencias_leer(): array {
+    $pdo = get_pdo();
+    $res = []; $idx = [];
+    foreach (materiales_leer() as $m) {
+        $res[$m['id_material']] = ['nombre' => $m['nombre'], 'compras' => 0.0, 'ventas' => 0.0, 'existencia' => 0.0];
+        $idx[mb_strtolower(trim($m['nombre']))] = $m['id_material'];
+    }
+    $sumar = function (string $campo, string $nombre, float $kg) use (&$res, $idx) {
+        $k = mb_strtolower(trim($nombre));
+        if (isset($idx[$k])) $res[$idx[$k]][$campo] += $kg;
+    };
+    foreach ($pdo->query("SELECT clasificacion, SUM(kilos) AS k FROM gestion_compras GROUP BY clasificacion") as $r)
+        $sumar('compras', (string)$r['clasificacion'], (float)$r['k']);
+    try {
+        foreach ($pdo->query("SELECT d.material, SUM(d.cantidad) AS k FROM Detalle_ventas d JOIN ventas v ON v.id_ventas = d.id_ventas
+                              WHERE v.estado = 'Activa' AND d.material IS NOT NULL GROUP BY d.material") as $r)
+            $sumar('ventas', (string)$r['material'], (float)$r['k']);
+    } catch (PDOException $e) { /* Detalle_ventas.material aún no existe */ }
+    foreach ($res as $id => $r) $res[$id]['existencia'] = $r['compras'] - $r['ventas'];
+    return $res;
+}
+
 function eventos_leer(): array {
     $pdo  = get_pdo();
     $rows = $pdo->query("SELECT * FROM agenda ORDER BY fecha ASC, hora ASC")->fetchAll();
@@ -219,7 +247,21 @@ function evento_eliminar(int $id): void {
 }
 
 
+function auditar(string $modulo, string $accion, string $descripcion = ''): void {
+    try { registrar_auditoria(get_pdo(), $modulo, $accion, $descripcion); } catch (Throwable $e) { /* la auditoría nunca debe romper la operación */ }
+}
+
 function registrar_auditoria(PDO $pdo, string $modulo, string $accion, string $descripcion = ''): void {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS auditoria (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    fecha DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    usuario_nombre VARCHAR(100) NOT NULL DEFAULT 'sistema',
+    modulo VARCHAR(50) NOT NULL,
+    accion VARCHAR(50) NOT NULL,
+    descripcion TEXT NULL,
+    ip VARCHAR(45) NULL,
+    INDEX idx_fecha (fecha), INDEX idx_modulo (modulo)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     $pdo->prepare(
         "INSERT INTO auditoria (usuario_nombre, modulo, accion, descripcion, ip)
          VALUES (:usuario, :modulo, :accion, :desc, :ip)"

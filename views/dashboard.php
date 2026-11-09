@@ -10,25 +10,24 @@ try {
         [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]
     );
 
-    /* KPI: Stock total */
-    $row = $pdo->query("SELECT COALESCE(SUM(stock_max),0) as total, COUNT(*) as tipos FROM materiales")->fetch();
-    $stock_total_kg = (float)$row['total'];
-    $stock_tipos    = (int)$row['tipos'];
-
-    /* Alertas stock bajo */
-    $alertas = $pdo->query(
-        "SELECT nombre, stock_max, stock_min FROM materiales WHERE stock_max < stock_min ORDER BY nombre"
-    )->fetchAll();
+    /* Existencia real por material (compras - ventas) */
+    $existencias = existencias_leer();
+    $catalogo    = materiales_leer();
+    $stock_total_kg = 0; $alertas = []; $materiales_grafica = [];
+    foreach ($catalogo as $mt) {
+        $ex = $existencias[$mt['id_material']]['existencia'] ?? 0;
+        $stock_total_kg += max(0, $ex);
+        if ($ex < (float)$mt['stock_min']) $alertas[] = ['nombre' => $mt['nombre'], 'existencia' => $ex, 'stock_min' => (float)$mt['stock_min']];
+        $materiales_grafica[] = ['nombre' => $mt['nombre'], 'existencia' => $ex, 'stock_min' => (float)$mt['stock_min']];
+    }
+    $stock_tipos = count($catalogo);
+    usort($materiales_grafica, fn($x, $y) => $y['existencia'] <=> $x['existencia']);
+    $materiales_grafica = array_slice($materiales_grafica, 0, 8);
 
     /* Datos para gráfica de usuarios */
     $row = $pdo->query("SELECT SUM(activo = 1) as activos, SUM(activo = 0) as inactivos FROM usuarios")->fetch();
     $usuarios_activos   = (int)$row['activos'];
     $usuarios_inactivos = (int)$row['inactivos'];
-
-    /* Datos para gráfica de materiales */
-    $materiales_grafica = $pdo->query(
-        "SELECT nombre, stock_max, stock_min FROM materiales ORDER BY stock_max DESC LIMIT 8"
-    )->fetchAll();
 
     /* KPI: Ventas del día */
     try {
@@ -39,7 +38,7 @@ try {
 
     /* KPI: Compras del día */
     try {
-        $row = $pdo->query("SELECT COALESCE(SUM(total),0) as monto, COUNT(*) as cnt FROM compras WHERE DATE(fecha)=CURDATE()")->fetch();
+        $row = $pdo->query("SELECT COALESCE(SUM(dinero_recibido),0) as monto, COUNT(*) as cnt FROM gestion_compras WHERE DATE(fecha)=CURDATE()")->fetch();
         $compras_dia = (float)$row['monto'];
         $compras_num = (int)$row['cnt'];
     } catch (PDOException $e) { $compras_dia = 0; $compras_num = 0; }
@@ -125,6 +124,46 @@ require_once __DIR__ . '/layout_header.php';
 .gan-left .marg  { font-size:12.5px; opacity:.7; margin-top:3px; }
 .gan-icon        { font-size:60px; opacity:.18; }
 
+.resumen-panel {
+    background:var(--white); border-radius:var(--radius-card);
+    border:1px solid var(--border); box-shadow:var(--shadow-sm);
+    margin-top:20px; overflow:hidden; animation:dashUp .35s .38s ease both;
+}
+.resumen-head {
+    display:flex; align-items:center; gap:14px; padding:18px 22px;
+    background:linear-gradient(135deg,var(--green-light) 0%,#fff 70%);
+    border-bottom:1px solid var(--border);
+}
+.resumen-ico { width:44px; height:44px; border-radius:12px; background:var(--green-dark); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+.resumen-head h3 { font-size:15px; font-weight:700; color:var(--text-dark); margin:0 0 2px; }
+.resumen-head p  { font-size:12.5px; color:var(--text-gray); margin:0; }
+.resumen-body { padding:20px 22px; display:flex; flex-direction:column; gap:16px; }
+.resumen-chips { display:flex; flex-wrap:wrap; gap:8px; }
+.resumen-chip {
+    border:1.5px solid var(--border); background:#fff; color:var(--text-gray);
+    border-radius:var(--radius-pill); padding:7px 16px; font-size:13px; font-weight:600;
+    cursor:pointer; transition:var(--transition); font-family:inherit;
+}
+.resumen-chip:hover  { border-color:var(--green-mid); color:var(--green-dark); }
+.resumen-chip.activo { background:var(--green-dark); border-color:var(--green-dark); color:#fff; }
+.resumen-fila { display:flex; flex-wrap:wrap; align-items:flex-end; gap:14px; }
+.resumen-campo { display:flex; flex-direction:column; gap:5px; flex:1; min-width:150px; }
+.resumen-campo label { font-size:12px; font-weight:600; color:var(--text-gray); }
+.resumen-campo input {
+    border:1.5px solid var(--border); border-radius:10px; padding:10px 12px;
+    font-size:14px; font-family:inherit; color:var(--text-dark); outline:none; transition:var(--transition);
+}
+.resumen-campo input:focus { border-color:var(--green-mid); box-shadow:0 0 0 3px var(--green-light); }
+.resumen-btn {
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    background:var(--green-dark); color:#fff; border:0; border-radius:var(--radius-pill);
+    padding:11px 26px; font-size:14px; font-weight:700; cursor:pointer;
+    transition:var(--transition); font-family:inherit;
+}
+.resumen-btn:hover { background:var(--green-mid); transform:translateY(-1px); box-shadow:var(--shadow-md); }
+.resumen-nota { font-size:12px; color:var(--text-gray); }
+
 @keyframes dashUp {
     from{ opacity:0; transform:translateY(16px); }
     to  { opacity:1; transform:translateY(0); }
@@ -176,7 +215,7 @@ require_once __DIR__ . '/layout_header.php';
     <div class="alert-stock-title"><i class="fa-solid fa-triangle-exclamation"></i> Alertas de Stock Bajo</div>
     <ul>
         <?php foreach ($alertas as $a): ?>
-        <li><?= e($a['nombre']) ?>: <?= number_format($a['stock_max']) ?> kg (mínimo: <?= number_format($a['stock_min']) ?> kg)</li>
+        <li><?= e($a['nombre']) ?>: <?= number_format($a['existencia']) ?> kg (mínimo: <?= number_format($a['stock_min']) ?> kg)</li>
         <?php endforeach; ?>
     </ul>
 </div>
@@ -201,6 +240,7 @@ require_once __DIR__ . '/layout_header.php';
 
 </div>
 
+<?php if (es_dueno()): ?>
 <!-- Ganancia neta -->
 <div class="ganancia-banner">
     <div class="gan-left">
@@ -210,6 +250,59 @@ require_once __DIR__ . '/layout_header.php';
     </div>
     <div class="gan-icon"><i class="fa-solid fa-dollar-sign"></i></div>
 </div>
+
+<!-- Resumen por periodo -->
+<div class="resumen-panel">
+    <div class="resumen-head">
+        <div class="resumen-ico"><i class="fa-solid fa-file-pdf"></i></div>
+        <div>
+            <h3>Resumen por periodo</h3>
+            <p>Compras, ventas, inventario y metas del rango que elijas</p>
+        </div>
+    </div>
+    <form class="resumen-body" action="exportar_pdf_resumen.php" method="get" target="_blank">
+        <div class="resumen-chips" id="resChips">
+            <button type="button" class="resumen-chip activo" data-p="mes">Mes actual</button>
+            <button type="button" class="resumen-chip" data-p="mes_ant">Mes anterior</button>
+            <button type="button" class="resumen-chip" data-p="3m">Últimos 3 meses</button>
+            <button type="button" class="resumen-chip" data-p="6m">Últimos 6 meses</button>
+            <button type="button" class="resumen-chip" data-p="anio">Año actual</button>
+        </div>
+        <div class="resumen-fila">
+            <div class="resumen-campo"><label for="resDesde">Desde</label><input type="date" name="desde" id="resDesde" required></div>
+            <div class="resumen-campo"><label for="resHasta">Hasta</label><input type="date" name="hasta" id="resHasta" required></div>
+            <button type="submit" class="resumen-btn"><i class="fa-solid fa-download"></i> Generar resumen</button>
+        </div>
+        <div class="resumen-nota">Incluye comparativo contra el periodo anterior de igual duración. Se abre en una pestaña nueva.</div>
+    </form>
+</div>
+
+<script>
+(function () {
+    const f = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    const chips = document.querySelectorAll('#resChips .resumen-chip');
+    const d1 = document.getElementById('resDesde'), d2 = document.getElementById('resHasta');
+    function rango(p) {
+        const h = new Date(), y = h.getFullYear(), mo = h.getMonth();
+        return {
+            mes:     [new Date(y, mo, 1), h],
+            mes_ant: [new Date(y, mo - 1, 1), new Date(y, mo, 0)],
+            '3m':    [new Date(y, mo - 2, 1), h],
+            '6m':    [new Date(y, mo - 5, 1), h],
+            anio:    [new Date(y, 0, 1), h],
+        }[p];
+    }
+    function aplicar(p) {
+        const r = rango(p);
+        d1.value = f(r[0]); d2.value = f(r[1]);
+        chips.forEach(c => c.classList.toggle('activo', c.dataset.p === p));
+    }
+    chips.forEach(c => c.addEventListener('click', () => aplicar(c.dataset.p)));
+    [d1, d2].forEach(i => i.addEventListener('input', () => chips.forEach(c => c.classList.remove('activo'))));
+    aplicar('mes');
+})();
+</script>
+<?php endif; ?>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
@@ -247,7 +340,7 @@ new Chart(ctxU, {
 
 /* ── Gráfica barras: Materiales ── */
 const materiales = <?= json_encode(array_column($materiales_grafica, 'nombre')) ?>;
-const stocks     = <?= json_encode(array_map(fn($m) => (float)$m['stock_max'], $materiales_grafica)) ?>;
+const stocks     = <?= json_encode(array_map(fn($m) => (float)$m['existencia'], $materiales_grafica)) ?>;
 const stocksMins = <?= json_encode(array_map(fn($m) => (float)$m['stock_min'], $materiales_grafica)) ?>;
 
 const colores = stocks.map((s, i) => s < stocksMins[i] ? '#dc2626' : '#16a34a');
